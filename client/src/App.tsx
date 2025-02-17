@@ -6,7 +6,7 @@ import { WalletSelector } from "./components/WalletSelector";
 import { Header } from "./components/Header";
 import { Home } from "./pages/Home";
 import { Profile } from "./pages/Profile";
-
+import { Buffer } from 'buffer';
 function App() {
   const { connected, publicKey, signMessage } = useWallet();
   const [loading, setLoading] = React.useState(false);
@@ -17,7 +17,7 @@ function App() {
 
   React.useEffect(() => {
     const token = localStorage.getItem("authToken");
-    if (token) setSignedIn(true);
+    if (token) setSignedIn(true);1
   }, []);
 
   const handleSignIn = async () => {
@@ -40,7 +40,8 @@ function App() {
       const messageBytes = new TextEncoder().encode(nonce);
       const signature = await signMessage(messageBytes);
 
-      // Send signed message to backend for verification
+      const base64Signature = Buffer.from(signature).toString("base64");
+
       const authResponse = await fetch(
         `${import.meta.env.VITE_BACKEND_URI}/api/auth/verify`,
         {
@@ -48,7 +49,7 @@ function App() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             walletAddress: publicKey.toBase58(),
-            signedMessage: Buffer.from(signature).toString("base64"),
+            signedMessage: base64Signature,
           }),
         }
       );
