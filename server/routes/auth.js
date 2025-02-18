@@ -4,8 +4,6 @@ import jwt from "jsonwebtoken";
 import { createClient } from "@supabase/supabase-js";
 import express from "express";
 
-
-
 const supabase = createClient(
   process.env.SUPABASE_PROJECT_KEY,
   process.env.SUPABASE_ANON_KEY
@@ -19,7 +17,7 @@ router.post("/nonce", async (req, res) => {
     return res.status(400).json({
       error: "Wallet address required",
     });
-  const nonce = `Login to Uncrossable - ${Date.now()}`;
+  const nonce = `Login to Uncrossable - ${Date.now()}\nBy signing this message you accept our Terms and Conditions at https://chicken-cross.vercel.app/terms-and-conditions`;
 
   const defaultUsername = `user-${walletAddress.slice(0, 4)}`;
 

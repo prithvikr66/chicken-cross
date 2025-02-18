@@ -159,7 +159,8 @@ export function Home({ onPageChange }: HomeProps) {
                 >
                   <UserCircle2 className="w-5 h-5 text-gray-400" />
                   <span className="hidden md:inline text-gray-400">
-                    {publicKey?.toBase58().slice(0, 4)}...{publicKey?.toBase58().slice(-4)}
+                    {publicKey?.toBase58().slice(0, 4)}...
+                    {publicKey?.toBase58().slice(-4)}
                   </span>
                 </button>
 
@@ -222,11 +223,12 @@ export function Home({ onPageChange }: HomeProps) {
               Featured Game
             </span>
             <h1 className="text-4xl md:text-6xl font-bold mb-4 bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
-              Crypto Crash
+              Chicken Cross
             </h1>
             <p className="text-gray-400 max-w-2xl mx-auto">
-              Place your bets and watch the multiplier rise. Cash out before the
-              crash to win big!
+              🏆 Bet your SOL, cross the lanes, and make it as far as you can.
+              The farther you go, the bigger the payout—but one wrong move, and
+              it’s game over! 🐤💸
             </p>
           </div>
 

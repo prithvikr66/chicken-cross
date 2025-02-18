@@ -494,7 +494,7 @@ export function Profile({ onPageChange }: ProfileProps) {
 
         {/* Transaction History */}
         <div className="lg:col-span-2">
-          <div className="bg-[#1A2C38] rounded-2xl p-6 border border-white/10">
+          <div className="bg-[#1A2C38] rounded-2xl p-6 border border-white/10 h-full">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-yellow-400" />
@@ -502,13 +502,11 @@ export function Profile({ onPageChange }: ProfileProps) {
                   Transaction History
                 </h3>
                 <span className="text-sm text-gray-400">
-                  (
-                  {timeFilter === "7d"
+                  ({timeFilter === "7d"
                     ? "Last 7 Days"
                     : timeFilter === "30d"
                     ? "Last 30 Days"
-                    : "Year to Date"}
-                  )
+                    : "Year to Date"})
                 </span>
               </div>
               <div className="relative">
@@ -568,9 +566,9 @@ export function Profile({ onPageChange }: ProfileProps) {
 
             <div className="overflow-x-auto -mx-6">
               <div className="inline-block min-w-full align-middle px-6">
-                <div className="overflow-hidden">
+                <div className="overflow-hidden max-h-[400px] overflow-y-auto">
                   <table className="min-w-full">
-                    <thead>
+                    <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
                         <th className="pb-4 font-medium">Type</th>
                         <th className="pb-4 font-medium">Status</th>
@@ -629,12 +627,14 @@ export function Profile({ onPageChange }: ProfileProps) {
                         </tr>
                       ))}
                       {filteredTransactions.length === 0 && (
-                        <tr>
+                        <tr className="h-[300px]">
                           <td
-                            colSpan={3}
-                            className="py-8 text-center text-gray-400"
+                            colSpan={5}
+                            className="text-center text-gray-400 align-middle"
                           >
-                            No transactions found for this time period
+                            <div className="flex items-center justify-center h-full">
+                              No transactions found for this time period
+                            </div>
                           </td>
                         </tr>
                       )}

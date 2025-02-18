@@ -39,14 +39,8 @@ export function Header({ onPageChange }: HeaderProps) {
             <Home className="w-5 h-5" />
             <span>Home</span>
           </button>
-          <div className="h-6 w-px bg-white/10" />
-          <button
-            onClick={() => handleNavigate("profile")}
-            className="flex items-center space-x-2 px-3 py-1.5 rounded-lg text-white hover:bg-white/5 transition-colors"
-          >
-            <UserCircle2 className="w-5 h-5" />
-            <span>Profile</span>
-          </button>
+          {/* <div className="h-6 w-px bg-white/10" /> */}
+          
         </nav>
 
         {/* Mobile Menu Button */}

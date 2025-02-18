@@ -4,6 +4,16 @@ export function WalletSelector() {
   const { select, wallets } = useWallet();
 
   const connectPhantom = () => {
+    // Check if we're on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    if (isMobile) {
+      // Deep link to Phantom
+      window.location.href = 'https://phantom.app/ul/browse';
+      return;
+    }
+
+    // Desktop flow remains the same
     const phantomWallet = wallets.find(w => w.adapter.name === 'Phantom');
     if (phantomWallet) {
       select(phantomWallet.adapter.name);
