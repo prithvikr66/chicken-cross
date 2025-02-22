@@ -3,8 +3,6 @@ import { useWallet } from "@solana/wallet-adapter-react";
 import {
   UserCircle2,
   Wallet,
-  Gift,
-  MessageSquare,
   ChevronDown,
   Plus,
   Trophy,
@@ -19,7 +17,7 @@ interface HomeProps {
 }
 
 export function Home({ onPageChange }: HomeProps) {
-  const { publicKey } = useWallet();
+  const { publicKey , disconnect } = useWallet();
   const [activeTab, setActiveTab] = React.useState<"highest" | "luckiest">(
     "highest"
   );
@@ -182,24 +180,14 @@ export function Home({ onPageChange }: HomeProps) {
                       <UserCircle2 className="w-4 h-4" />
                       <span>Profile</span>
                     </button>
-                    <button
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center space-x-2 w-full px-4 py-3 text-sm text-gray-200 hover:bg-white/5 border-t border-white/10"
-                    >
-                      <Gift className="w-4 h-4" />
-                      <span>Rewards</span>
-                    </button>
-                    <button
-                      onClick={() => setShowProfileMenu(false)}
-                      className="flex items-center space-x-2 w-full px-4 py-3 text-sm text-gray-200 hover:bg-white/5 border-t border-white/10"
-                    >
-                      <MessageSquare className="w-4 h-4" />
-                      <span>Messages</span>
-                    </button>
+                   
                     <button
                       onClick={() => {
                         window.location.reload();
-                        setShowProfileMenu(false);
+                        disconnect();
+                        localStorage.removeItem("authToken");
+                        localStorage.removeItem("walletName");
+                       
                       }}
                       className="flex items-center space-x-2 w-full px-4 py-3 text-sm text-red-400 hover:bg-white/5 border-t border-white/10"
                     >
