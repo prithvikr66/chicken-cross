@@ -13,6 +13,7 @@ import {
   Clock,
   Gamepad2,
 } from "lucide-react";
+import GameUI from "../components/GameUI";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -218,7 +219,7 @@ export function Home({ onPageChange }: HomeProps) {
       <div className="pt-20 pb-12 px-4">
         <div className="max-w-7xl mx-auto">
           {/* Game Header */}
-          <div className="mb-12 text-center">
+          <div className="mb-5 text-center">
             <span className="inline-block px-4 py-1 rounded-full bg-purple-500/20 text-purple-300 text-sm mb-4">
               Featured Game
             </span>
@@ -231,8 +232,13 @@ export function Home({ onPageChange }: HomeProps) {
               it’s game over! 🐤💸
             </p>
           </div>
+            
+          {/* Game UI */}
+          <div className=" border border-white rounded-2xl overflow-x-auto ">
+            <GameUI/>
+          </div>
 
-          {/* Chicken Crossing Game UI */}
+
           <div className="mb-12 bg-[#1A2C38] rounded-2xl p-6 backdrop-blur-lg border border-white/10">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
               {/* Mobile Start Game Button */}
