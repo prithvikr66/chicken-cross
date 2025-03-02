@@ -85,9 +85,7 @@ router.post("/verify", async (req, res) => {
       walletAddress,
     },
     process.env.JWT_SECRET,
-    {
-      expiresIn: "2d",
-    }
+    
   );
   res.json({
     token,
