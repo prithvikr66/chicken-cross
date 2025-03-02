@@ -13,11 +13,15 @@ import {
   ArrowDownCircle,
   Wallet,
   Clock,
-  ChevronDown,
   Check,
   Upload,
+  X,
 } from "lucide-react";
-
+import {
+  Connection,
+  LAMPORTS_PER_SOL,
+} from "@solana/web3.js";
+import {  useHandleDeposits } from "../utils/Deposits";
 interface ProfileProps {
   onPageChange: (page: "home" | "profile") => void;
 }
@@ -32,20 +36,17 @@ export function Profile({ onPageChange }: ProfileProps) {
   const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
   const [withdrawAmount, setWithdrawAmount] = React.useState("");
   const [showSettingsSuccess, setShowSettingsSuccess] = React.useState(false);
-  const [timeFilter, setTimeFilter] = React.useState<"7d" | "30d" | "ytd">(
-    "7d"
-  );
-  const [showTimeFilter, setShowTimeFilter] = React.useState(false);
+ 
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
- 
-
+  const [walletBalance, setWalletBalance] = React.useState<number>(0);
+  const { handleDeposits, } = useHandleDeposits();
   const [profile, setProfile] = React.useState({
     username: "",
     name: "",
     profileImage: "",
     newImage: null,
-    account_balance:0
+    account_balance: 0,
   });
 
   // Add new state for temporary modal data
@@ -53,6 +54,23 @@ export function Profile({ onPageChange }: ProfileProps) {
     username: "",
     profileImage: "",
   });
+
+  const [isTransactionPending, setIsTransactionPending] = React.useState(false);
+  const [transactionError, setTransactionError] = React.useState<string | null>(null);
+  const [transactions, setTransactions] = React.useState<Array<{
+    id: string;
+    wallet_address: string;
+    amount: number;
+    transaction_type: string;
+    status: string;
+    signature: string;
+    created_at: string;
+    updated_at: string;
+    fee: number | null;
+    notes: string | null;
+    error_message: string | null;
+  }>>([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] = React.useState(true);
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -62,12 +80,15 @@ export function Profile({ onPageChange }: ProfileProps) {
           throw new Error("No auth token found");
         }
 
-        const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/profile`, {
-          headers: {
-            Authorization: `Bearer ${authToken}`,
-            "Content-Type": "application/json",
-          },
-        });
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URI}/api/user/profile`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
 
         if (!response.ok) {
           throw new Error("Failed to fetch profile");
@@ -78,13 +99,17 @@ export function Profile({ onPageChange }: ProfileProps) {
           ...prevProfile,
           username: data.username,
           name: data.name,
-          account_balance:data.account_balance,
-          profileImage: data.profile_pic ? data.profile_pic : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop" ,
+          account_balance: data.account_balance,
+          profileImage: data.profile_pic
+            ? data.profile_pic
+            : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop",
         }));
 
         setModalProfile({
           username: data.username,
-          profileImage: data.profile_pic ? data.profile_pic : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop",
+          profileImage: data.profile_pic
+            ? data.profile_pic
+            : "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?q=80&w=200&h=200&auto=format&fit=crop",
         });
       } catch (err) {
         // setError(err.message);
@@ -94,6 +119,58 @@ export function Profile({ onPageChange }: ProfileProps) {
     };
 
     fetchProfile();
+  }, []);
+
+  React.useEffect(() => {
+    const fetchWalletBalance = async () => {
+      if (publicKey) {
+        try {
+          const connection = new Connection(
+            import.meta.env.VITE_SOLANA_RPC_URL ||
+              "https://api.devnet.solana.com"
+          );
+          const balance = await connection.getBalance(publicKey);
+          setWalletBalance(balance / LAMPORTS_PER_SOL);
+        } catch (error) {
+          console.error("Error fetching wallet balance:", error);
+        }
+      }
+    };
+
+    fetchWalletBalance();
+  }, [publicKey]);
+
+  // Add this useEffect to fetch transactions
+  React.useEffect(() => {
+    const fetchTransactions = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) throw new Error("No auth token found");
+
+        const response = await fetch(
+          `${import.meta.env.VITE_BACKEND_URI}/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch transactions");
+
+        const data = await response.json();
+        console.log("data", data.transactions);
+        setTransactions(data.length > 10 ? data.slice(0, 10) : data.transactions);
+        console.log("transactions", transactions);
+      } catch (error) {
+        console.error("Error fetching transactions:", error);
+      } finally {
+        setIsLoadingTransactions(false);
+      }
+    };
+
+    fetchTransactions();
   }, []);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -114,173 +191,25 @@ export function Profile({ onPageChange }: ProfileProps) {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result as string);
-        setModalProfile(prev => ({
+        setModalProfile((prev) => ({
           ...prev,
-          profileImage: reader.result as string
+          profileImage: reader.result as string,
         }));
       };
       reader.readAsDataURL(file);
     }
   };
 
-
-  const transactions = [
-    {
-      id: 1,
-      type: "deposit",
-      amount: 25.5,
-      date: "2024-03-15T10:30:00Z",
-      status: "completed",
-      hash: "5VeL...9XqM",
-    },
-    {
-      id: 2,
-      type: "withdrawal",
-      amount: 12.8,
-      date: "2024-03-14T15:45:00Z",
-      status: "completed",
-      hash: "3Kpj...7YtN",
-    },
-    {
-      id: 3,
-      type: "deposit",
-      amount: 50.0,
-      date: "2024-03-13T09:20:00Z",
-      status: "completed",
-      hash: "8RmX...2HqP",
-    },
-    {
-      id: 4,
-      type: "withdrawal",
-      amount: 8.5,
-      date: "2024-03-12T18:15:00Z",
-      status: "completed",
-      hash: "9WvQ...4ZsL",
-    },
-    {
-      id: 5,
-      type: "deposit",
-      amount: 100.0,
-      date: "2024-03-11T14:20:00Z",
-      status: "completed",
-      hash: "2ThN...6KmR",
-    },
-    {
-      id: 6,
-      type: "withdrawal",
-      amount: 35.2,
-      date: "2024-03-10T11:30:00Z",
-      status: "completed",
-      hash: "7PxY...1JtH",
-    },
-    {
-      id: 7,
-      type: "deposit",
-      amount: 72.5,
-      date: "2024-03-09T16:15:00Z",
-      status: "completed",
-      hash: "4MnB...9GvF",
-    },
-    {
-      id: 8,
-      type: "withdrawal",
-      amount: 21.3,
-      date: "2024-03-08T13:45:00Z",
-      status: "completed",
-      hash: "6LkD...3WsQ",
-    },
-    {
-      id: 9,
-      type: "deposit",
-      amount: 48.9,
-      date: "2024-03-07T09:10:00Z",
-      status: "completed",
-      hash: "1CjR...5NmK",
-    },
-    {
-      id: 10,
-      type: "withdrawal",
-      amount: 15.7,
-      date: "2024-03-06T17:25:00Z",
-      status: "completed",
-      hash: "0HxT...8BpL",
-    },
-    {
-      id: 11,
-      type: "deposit",
-      amount: 30.0,
-      date: "2024-03-05T12:40:00Z",
-      status: "completed",
-      hash: "9YmK...2VxN",
-    },
-    {
-      id: 12,
-      type: "withdrawal",
-      amount: 18.4,
-      date: "2024-03-04T08:55:00Z",
-      status: "completed",
-      hash: "4QwP...7HtM",
-    },
-    {
-      id: 13,
-      type: "deposit",
-      amount: 65.2,
-      date: "2024-03-03T14:30:00Z",
-      status: "completed",
-      hash: "2BnL...5RjK",
-    },
-    {
-      id: 14,
-      type: "withdrawal",
-      amount: 42.1,
-      date: "2024-03-02T16:20:00Z",
-      status: "completed",
-      hash: "7FmX...1TpQ",
-    },
-    {
-      id: 15,
-      type: "deposit",
-      amount: 83.6,
-      date: "2024-03-01T11:15:00Z",
-      status: "completed",
-      hash: "3VsY...9NhR",
-    },
-  ];
-//  @ts-ignore
-  const filterTransactions = (transactions: typeof transactions) => {
-    const now = new Date();
-    const startOfYear = new Date(now.getFullYear(), 0, 1);
-// @ts-ignore
-    return transactions.filter((tx) => {
-      const txDate = new Date(tx.date);
-      const diffTime = Math.abs(now.getTime() - txDate.getTime());
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      switch (timeFilter) {
-        case "7d":
-          return diffDays <= 7;
-        case "30d":
-          return diffDays <= 30;
-        case "ytd":
-          return txDate >= startOfYear;
-        default:
-          return true;
-      }
-    });
-  };
-
-  const filteredTransactions = filterTransactions(transactions);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
       const formData = new FormData();
-      
+
       if (modalProfile.username) {
         formData.append("username", modalProfile.username);
       }
-      
+
       if (imagePreview && fileInputRef.current?.files?.[0]) {
         formData.append("profilePic", fileInputRef.current.files[0]);
       }
@@ -290,35 +219,37 @@ export function Profile({ onPageChange }: ProfileProps) {
         throw new Error("No auth token found");
       }
 
-      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/user/update-profile`, {
-        method: "PUT",
-        headers: {
-          Authorization: `Bearer ${authToken}`,
-        },
-        body: formData,
-      });
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/api/user/update-profile`,
+        {
+          method: "PUT",
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+          },
+          body: formData,
+        }
+      );
 
       if (!response.ok) {
         throw new Error("Failed to update profile");
       }
 
       const data = await response.json();
-      
+
       // Update the main profile state with the new data
-      setProfile(prev => ({
+      setProfile((prev) => ({
         ...prev,
         username: data.username || prev.username,
         profileImage: data.profilePicUrl?.publicUrl || prev.profileImage,
       }));
 
       setShowSettingsSuccess(true);
-      
+
       setTimeout(() => {
         setShowSettingsSuccess(false);
         setShowSettings(false);
         setIsEditing(false);
       }, 2000);
-
     } catch (error) {
       console.error("Error updating profile:", error);
       // You might want to show an error message to the user here
@@ -329,31 +260,13 @@ export function Profile({ onPageChange }: ProfileProps) {
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
     const { name, value } = e.target;
-    setModalProfile(prev => ({ ...prev, [name]: value }));
+    setModalProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleDepositSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    const amount = parseFloat(depositAmount);
-    if (amount > 0 && amount <= 0.05) {
-      setShowSuccess(true);
-      setTimeout(() => {
-        setShowSuccess(false);
-        setShowDepositModal(false);
-        setDepositAmount("");
-      }, 2000);
-    }
-  };
+  
 
   const handleDepositChange = (value: string) => {
-    const cleanValue = value.replace(/[^\d.]/g, "");
-    const parts = cleanValue.split(".");
-    const formatted =
-      parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 8) : "");
-    const numValue = parseFloat(formatted);
-    if (!numValue || numValue <= 0.05) {
-      setDepositAmount(formatted);
-    }
+    setDepositAmount(value);
   };
 
   const handleWithdrawSubmit = (e: React.FormEvent) => {
@@ -376,7 +289,7 @@ export function Profile({ onPageChange }: ProfileProps) {
     const formatted =
       parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 8) : "");
     const numValue = parseFloat(formatted);
-    if (!numValue || numValue <= 245.5) {
+    if (!numValue || numValue <= profile.account_balance) {
       setWithdrawAmount(formatted);
     }
   };
@@ -398,6 +311,64 @@ export function Profile({ onPageChange }: ProfileProps) {
     });
     setImagePreview(null);
     setShowSettings(false);
+  };
+
+  const handleDepositSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsTransactionPending(true);
+    setTransactionError(null);
+    
+    try {
+      await handleDeposits(Number(depositAmount));
+      
+      // Fetch updated profile to get new balance
+      const authToken = localStorage.getItem("authToken");
+      const response = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/api/user/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+      
+      if (!response.ok) throw new Error("Failed to fetch updated balance");
+      
+      const data = await response.json();
+      setProfile(prev => ({
+        ...prev,
+        account_balance: data.account_balance
+      }));
+
+      // Fetch updated transactions
+      const txResponse = await fetch(
+        `${import.meta.env.VITE_BACKEND_URI}/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${authToken}`,
+            "Content-Type": "application/json",
+          },
+        }
+      );
+
+      if (txResponse.ok) {
+        const txData = await txResponse.json();
+        setTransactions(txData.transactions.length > 10 ? txData.transactions.slice(0, 10) : txData.transactions);
+      }
+
+      setShowSuccess(true);
+      setTimeout(() => {
+        setShowSuccess(false);
+        setShowDepositModal(false);
+        setDepositAmount("");
+      }, 2000);
+    } catch (error) {
+      console.error("Deposit failed:", error);
+      setTransactionError(error instanceof Error ? error.message : "Transaction failed");
+    } finally {
+      setIsTransactionPending(false);
+    }
   };
 
   return (
@@ -501,142 +472,96 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <h3 className="text-xl font-bold text-white">
                   Transaction History
                 </h3>
-                <span className="text-sm text-gray-400">
-                  ({timeFilter === "7d"
-                    ? "Last 7 Days"
-                    : timeFilter === "30d"
-                    ? "Last 30 Days"
-                    : "Year to Date"})
-                </span>
-              </div>
-              <div className="relative">
-                <button
-                  onClick={() => setShowTimeFilter(!showTimeFilter)}
-                  className="flex items-center space-x-1 text-sm text-gray-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg bg-[#2A3C48] hover:bg-[#374857] border border-white/10"
-                >
-                  <span>Time Period</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {showTimeFilter && (
-                  <div className="absolute right-0 mt-2 w-48 bg-[#1A2C38] rounded-xl shadow-lg py-1 border border-white/10 z-10">
-                    <button
-                      onClick={() => {
-                        setTimeFilter("7d");
-                        setShowTimeFilter(false);
-                      }}
-                      className={`flex items-center w-full px-4 py-2 text-sm hover:bg-white/5 ${
-                        timeFilter === "7d"
-                          ? "text-purple-400"
-                          : "text-gray-200"
-                      }`}
-                    >
-                      Last 7 Days
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTimeFilter("30d");
-                        setShowTimeFilter(false);
-                      }}
-                      className={`flex items-center w-full px-4 py-2 text-sm hover:bg-white/5 ${
-                        timeFilter === "30d"
-                          ? "text-purple-400"
-                          : "text-gray-200"
-                      }`}
-                    >
-                      Last 30 Days
-                    </button>
-                    <button
-                      onClick={() => {
-                        setTimeFilter("ytd");
-                        setShowTimeFilter(false);
-                      }}
-                      className={`flex items-center w-full px-4 py-2 text-sm hover:bg-white/5 ${
-                        timeFilter === "ytd"
-                          ? "text-purple-400"
-                          : "text-gray-200"
-                      }`}
-                    >
-                      Year to Date
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
 
             <div className="overflow-x-auto -mx-6">
               <div className="inline-block min-w-full align-middle px-6">
-                <div className="overflow-hidden max-h-[400px] overflow-y-auto">
+                <div className="overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
                   <table className="min-w-full">
                     <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
                         <th className="pb-4 font-medium">Type</th>
                         <th className="pb-4 font-medium">Status</th>
                         <th className="pb-4 font-medium">Amount</th>
-                        <th className="pb-4 font-medium">Date</th>
-                        <th className="pb-4 font-medium">Transaction</th>
+                        <th className="pb-4 font-medium hidden sm:table-cell">Date</th>
+                        <th className="pb-4 font-medium hidden md:table-cell">Transaction</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
-                    {/* @ts-ignore */}
-                      {filteredTransactions.map((tx, index) => (
-                        <tr key={tx.id} className="text-white">
-                          <td className="py-4">
-                            <div className="flex items-center space-x-2">
-                              {tx.type === "deposit" ? (
-                                <ArrowUpCircle className="w-5 h-5 text-green-400" />
-                              ) : (
-                                <ArrowDownCircle className="w-5 h-5 text-red-400" />
-                              )}
-                              <span className="capitalize font-medium">
-                                {tx.type}
+                      {isLoadingTransactions ? (
+                        <tr>
+                          <td colSpan={5} className="py-4 text-center">
+                            <div className="flex items-center justify-center space-x-2">
+                              <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
+                              <span className="text-gray-400">Loading transactions...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : !Array.isArray(transactions) || transactions.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="py-20 text-center text-gray-400">
+                            No transactions found
+                          </td>
+                        </tr>
+                      ) : (
+                        transactions.map((tx) => (
+                          <tr key={tx.id} className="text-white">
+                            <td className="py-4">
+                              <div className="flex items-center space-x-2">
+                                {tx.transaction_type === "deposit" ? (
+                                  <ArrowUpCircle className="w-5 h-5 text-green-400" />
+                                ) : (
+                                  <ArrowDownCircle className="w-5 h-5 text-red-400" />
+                                )}
+                                <span className="capitalize font-medium">
+                                  {tx.transaction_type}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="py-4">
+                              <span
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                  tx.status === "successful"
+                                    ? "bg-green-500/20 text-green-400"
+                                    : tx.status === "failed"
+                                    ? "bg-red-500/20 text-red-400"
+                                    : "bg-yellow-500/20 text-yellow-400"
+                                }`}
+                              >
+                                {tx.status}
                               </span>
-                            </div>
-                          </td>
-                          <td className="py-4">
-                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-500/20 text-green-400">
-                              {tx.status}
-                            </span>
-                          </td>
-                          <td className="py-4">
-                            <span
-                              className={
-                                tx.type === "deposit"
-                                  ? "text-green-400"
-                                  : "text-red-400"
-                              }
-                            >
-                              {tx.type === "deposit" ? "+" : "-"}
-                              {tx.amount} SOL
-                            </span>
-                          </td>
-                          <td className="py-4 text-purple-200">
-                            {new Date(tx.date).toLocaleDateString(undefined, {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                              hour: "2-digit",
-                              minute: "2-digit",
-                            })}
-                          </td>
-                          <td className="py-4">
-                            <span className="text-sm text-gray-400">
-                              {tx.hash}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                      {filteredTransactions.length === 0 && (
-                        <tr className="h-[300px]">
-                          <td
-                            colSpan={5}
-                            className="text-center text-gray-400 align-middle"
-                          >
-                            <div className="flex items-center justify-center h-full">
-                              No transactions found for this time period
-                            </div>
-                          </td>
-                        </tr>
+                            </td>
+                            <td className="py-4">
+                              <span
+                                className={
+                                  tx.transaction_type === "deposit"
+                                    ? "text-green-400"
+                                    : "text-red-400"
+                                }
+                              >
+                                {tx.transaction_type === "deposit" ? "+" : "-"}
+                                {tx.amount} SOL
+                              </span>
+                            </td>
+                            <td className="py-4 hidden sm:table-cell text-purple-200">
+                              {new Date(tx.created_at).toLocaleDateString(undefined, {
+                                day: "numeric",
+                                month: "short"
+                              })}
+                            </td>
+                            <td className="py-4 hidden md:table-cell">
+                              <a
+                                href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+                              >
+                                {tx.signature.slice(0, 6)}...{tx.signature.slice(-4)}
+                              </a>
+                            </td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
@@ -800,7 +725,7 @@ export function Profile({ onPageChange }: ProfileProps) {
         </div>
       )}
 
-      {/* Deposit Modal */}
+      {/* Modified Deposit Modal */}
       {showDepositModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-[#1A2C38] rounded-2xl p-6 w-full max-w-md m-4 border border-white/10 relative overflow-hidden">
@@ -815,6 +740,39 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <p className="text-gray-400 text-center">
                   Your funds have been added to your account
                 </p>
+              </div>
+            ) : transactionError ? (
+              <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-bold text-red-500 mt-4 mb-2">
+                  Transaction Failed
+                </h3>
+                <p className="text-gray-400 text-center">
+                  {transactionError}
+                </p>
+                <button
+                  onClick={() => setTransactionError(null)}
+                  className="mt-4 px-6 py-2 rounded-lg bg-[#2A3C48] hover:bg-[#374857] border border-white/10 transition-all font-medium text-white"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : isTransactionPending ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 relative">
+                  <div className="w-16 h-16 rounded-full border-4 border-yellow-500/20 animate-spin border-t-yellow-500"></div>
+                </div>
+                <h3 className="text-xl font-bold text-white mt-4 mb-2">
+                  Processing Transaction
+                </h3>
+                <p className="text-gray-400 text-center">
+                  Please wait while we verify your deposit...
+                </p>
+                <div className="w-full max-w-xs mt-4 h-2 bg-[#2A3C48] rounded-full overflow-hidden">
+                  <div className="h-full bg-gradient-to-r from-yellow-400 to-yellow-500 animate-progress"></div>
+                </div>
               </div>
             ) : (
               <>
@@ -833,7 +791,7 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <form onSubmit={handleDepositSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">
-                      Amount (Max 0.05 SOL)
+                      Amount (Max 5 SOL)
                     </label>
                     <div className="relative">
                       <input
@@ -845,14 +803,14 @@ export function Profile({ onPageChange }: ProfileProps) {
                       />
                       <button
                         type="button"
-                        onClick={() => handleDepositChange("0.05")}
+                        onClick={() => handleDepositChange("5")}
                         className="absolute right-2 top-2 px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
                       >
                         MAX
                       </button>
                     </div>
                     <p className="mt-2 text-sm text-gray-400">
-                      Available: 245.5 SOL
+                      Available: {walletBalance.toFixed(4)} SOL
                     </p>
                   </div>
 
@@ -918,7 +876,7 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <form onSubmit={handleWithdrawSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">
-                      Amount (Max 245.5 SOL)
+                      Amount (Max {profile.account_balance} SOL)
                     </label>
                     <div className="relative">
                       <input
@@ -937,7 +895,7 @@ export function Profile({ onPageChange }: ProfileProps) {
                       </button>
                     </div>
                     <p className="mt-2 text-sm text-gray-400">
-                      Available: 245.5 SOL
+                      Available: {profile.account_balance} SOL
                     </p>
                   </div>
 
