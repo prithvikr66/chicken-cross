@@ -13,7 +13,8 @@ import {
 import { clusterApiUrl } from "@solana/web3.js";
 import App from "./App.tsx";
 import "./index.css";
-
+import { Buffer } from 'buffer';
+window.Buffer = Buffer;
 // You can also provide a custom RPC endpoint
 const endpoint = clusterApiUrl(WalletAdapterNetwork.Devnet);
 

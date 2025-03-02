@@ -8,6 +8,11 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  resolve: {
+    alias: {
+      'buffer': 'buffer/',
+    }
+  },
 
   server: {
     host: '0.0.0.0', // Allows external access
