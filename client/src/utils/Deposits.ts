@@ -39,12 +39,14 @@ export const useHandleDeposits = () => {
         })
       );
 
-      // Send and confirm the transaction
-      const signature = await sendTransaction(transaction, connection);
-      const confirmation = await connection.confirmTransaction(
-        signature,
-        "confirmed"
-      );
+
+      const {
+        context: { slot: minContextSlot },
+        value: { blockhash, lastValidBlockHeight }
+    } = await connection.getLatestBlockhashAndContext();
+
+    const signature = await sendTransaction(transaction, connection, { minContextSlot });
+      const confirmation = await connection.confirmTransaction({ blockhash, lastValidBlockHeight, signature });
 
       if (confirmation.value.err) {
         throw new Error("Transaction failed to confirm");

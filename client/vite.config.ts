@@ -23,7 +23,7 @@ export default defineConfig({
     },
     allowedHosts: [
       '.ngrok.io', 
-      '927e-116-75-68-39.ngrok-free.app' // Your specific ngrok URL
+      'db55-116-75-68-39.ngrok-free.app' // Your specific ngrok URL
     ],
   },
 });
