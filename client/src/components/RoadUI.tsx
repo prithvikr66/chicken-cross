@@ -1,3 +1,4 @@
+import React from "react";
 import CoinImg from "../assets/road_coin.svg";
 
 interface RoadUIProps {
@@ -10,15 +11,26 @@ interface RoadUIProps {
 function RoadUI({ laneIndex, value, onLaneClick, isTargetLane }: RoadUIProps) {
   return (
     <div
-      className={`bg-[#313464] border-r-4 border-dashed border-white  hover:cursor-pointer flex justify-center items-center ${
-        isTargetLane ? 'border-4 border-yellow-500' : ''
+      className={`bg-[#313464] border-r-4 border-dashed border-white flex justify-center items-center h-full cursor-pointer hover:bg-[#3b3e70] ${
+        isTargetLane ? "border-4 border-yellow-500" : ""
       }`}
-      style={{ width: "200px", height: "400px" }}
+      style={{ width: "200px" }}
       onClick={() => onLaneClick(laneIndex)}
     >
-      <img src={CoinImg} alt="Coin" className="border hover:cursor-pointer w-16 h-16" />
-      <span className="absolute border border-red-600 text-white text-sm font-bold">{value}x</span>
-    </div> 
+      {/* Coin container */}
+      <div className="relative flex items-center justify-center">
+        {/* Coin Image */}
+        <img
+          src={CoinImg}
+          alt="Coin"
+          className="w-16 h-16 hover:scale-110 transition-transform"
+        />
+        {/* Multiplier Text in Center of Coin */}
+        <span className="absolute text-white text-sm font-bold">
+          {value}x
+        </span>
+      </div>
+    </div>
   );
 }
 
