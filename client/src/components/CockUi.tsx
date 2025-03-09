@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import CockImg from "../assets/standing_clock.svg";
 import CockMovingImg1 from "../assets/cock_walk_1.svg";
 import CockMovingImg2 from "../assets/cock_walk_2.svg";
@@ -10,15 +10,17 @@ interface CockUiProps {
   currentLane: number;
   onMoveComplete: () => void;
   onHenLaneChange: (laneIndex: number) => void;
+  crashLane: number | null;
+  gameOver: boolean;
 }
 
 function CockUi({
-  maxWidth,
-  maxHeight,
   targetLane,
   currentLane,
   onMoveComplete,
   onHenLaneChange,
+  crashLane,
+  gameOver,
 }: CockUiProps) {
   const laneWidth = 200;
   const [position, setPosition] = useState({ left: calculateLanePosition(currentLane) });
@@ -46,6 +48,22 @@ function CockUi({
       return () => clearTimeout(timeout);
     }
   }, [targetLane, currentLane, onMoveComplete, onHenLaneChange]);
+
+  // Handle crash lane reached or game over
+  useEffect(() => {
+    if (
+      gameOver || 
+      (crashLane !== null && currentLane >= crashLane)
+    ) {
+      // Add a short delay before handling game end to allow animations to complete
+      const timeout = setTimeout(() => {
+        // Animation completed and we're at or past crash lane
+        // The game end logic will be handled by the parent component
+      }, 1000);
+      
+      return () => clearTimeout(timeout);
+    }
+  }, [currentLane, crashLane, gameOver]);
 
   useEffect(() => {
     if (isMoving) {

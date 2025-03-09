@@ -5,7 +5,7 @@ import Car2Img from "../assets/car_2.svg";
 
 // Define props interface
 interface CarUiProps {
-  difficulty: "easy" | "medium" | "hard";
+  difficulty: "easy" | "medium" | "hard"|"daredevil";
   henLane: number;
   roadWidth: number;
 }
