@@ -11,26 +11,26 @@ const supabase = createClient(
 
 const router = express.Router();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+// const __filename = fileURLToPath(import.meta.url);
+// const __dirname = path.dirname(__filename);
 
-const publicKeyPath = path.join(__dirname, "../", "public_key.pem");
-const publicKey = fs.readFileSync(publicKeyPath, "utf8");
+// const publicKeyPath = path.join(__dirname, "../", "public_key.pem");
+// const publicKey = fs.readFileSync(publicKeyPath, "utf8");
 
-function encryptDataWithPublicKey(data) {
-  const buffer = Buffer.from(data.toString(), "utf8");
+// function encryptDataWithPublicKey(data) {
+//   const buffer = Buffer.from(data.toString(), "utf8");
 
-  const encrypted = crypto.publicEncrypt(
-    {
-      key: publicKey,
-      padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // ✅ Ensure correct padding
-      oaepHash: "sha256", // ✅ Use SHA-256 for OAEP
-    },
-    buffer
-  );
+//   const encrypted = crypto.publicEncrypt(
+//     {
+//       key: publicKey,
+//       padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // ✅ Ensure correct padding
+//       oaepHash: "sha256", // ✅ Use SHA-256 for OAEP
+//     },
+//     buffer
+//   );
 
-  return encrypted.toString("base64"); // ✅ Convert to Base64 for safe transmission
-}
+//   return encrypted.toString("base64"); // ✅ Convert to Base64 for safe transmission
+// }
 
 function generateServerSeed() {
   return crypto.randomBytes(32).toString("hex");
