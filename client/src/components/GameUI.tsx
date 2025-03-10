@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import LeftBg from "../assets/left_bg.svg";
 import RightBg from "../assets/right_bg.svg";
 import LeftRightBg from "../assets/left_right_road.png";
@@ -27,20 +27,25 @@ const GameUI: React.FC<GameUIProps> = ({
 }) => {
   const roadHeight = 400;
   const roadWidth = 200;
+
   const [targetLane, setTargetLane] = useState<number | null>(null);
   const [currentLane, setCurrentLane] = useState<number>(0);
-  const [gameOver, setGameOver] = useState(false);
   const [crashLane, setCrashLane] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Set loading state based on game conditions
+  // -- NEW STATES --
+  // If true, we'll spawn a "crash car" in CarUi
+  const [forceCrashCar, setForceCrashCar] = useState(false);
+  // Whether the cock has been run over and is now “dead”
+  const [cockDead, setCockDead] = useState(false);
+
+  // Ref for the container wrapping the lanes
+  const lanesContainerRef = useRef<HTMLDivElement>(null);
+
+  // --- LOADING MULTIPLIERS / CRASH LANE ---
   useEffect(() => {
-    // Game is considered loading until we have multipliers and crash lane data
     if (multipliers.length > 0 && gameActive && encryptedCrashLane !== undefined) {
-      // Short delay to ensure all resources are loaded
-      const timer = setTimeout(() => {
-        setLoading(false);
-      }, 500);
+      const timer = setTimeout(() => setLoading(false), 500);
       return () => clearTimeout(timer);
     } else {
       setLoading(true);
@@ -53,62 +58,91 @@ const GameUI: React.FC<GameUIProps> = ({
     }
   }, [encryptedCrashLane]);
 
-  /** ✅ Handle Lane Click */
-  const handleLaneClick = (laneIndex: number) => {
-    if (
-      !gameActive ||
-      gameOver ||
-      targetLane ||
-      laneIndex <= currentLane ||
-      crashLane === null ||
-      loading
-    ) {
-      console.log("🚫 Lane selection blocked");
-      return;
+  // --- SCROLL TO FIRST LANE WHEN GAME STARTS ---
+  useEffect(() => {
+    if (gameActive && !loading) {
+      const firstLaneElem = document.getElementById("lane-1");
+      if (firstLaneElem) {
+        firstLaneElem.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
     }
+  }, [gameActive, loading]);
 
-    if (laneIndex >= crashLane) {
-      console.log("💥 Game Over - Hit Crash Lane");
-      setGameOver(true);
-      setTimeout(() => {
-        onGameEnd();
-      }, 1500); // Delay to show game over UI
-      return;
-    }
+  /**
+   * When a lane is clicked:
+   *   1) If it’s the crash lane, we’ll let the hen move to that lane.
+   *   2) Otherwise it’s a normal lane, so just move the hen as usual.
+   *   3) Scroll into the next lane’s view (or if last lane, scroll at least to itself).
+   */
+  const handleLaneClick = (clickedLaneIndex: number) => {
+    if (!gameActive || loading) return;
 
-    console.log("🚗 Moving to lane:", laneIndex);
-    setTargetLane(laneIndex);
-  };
+    // If user clicks the crash lane, we will handle the crash logic in handleMoveComplete
+    setTargetLane(clickedLaneIndex);
 
-  /** ✅ Update Current Lane after Move */
-  const handleMoveComplete = () => {
-    if (targetLane !== null) {
-      setCurrentLane(targetLane);
-      setTargetLane(null);
-      
-      // Check if we've reached crash lane
-      if (crashLane !== null && targetLane >= crashLane) {
-        setGameOver(true);
-        setTimeout(() => {
-          onGameEnd();
-        }, 1000);
+    const totalLanes = multipliers.length;
+    if (clickedLaneIndex < totalLanes) {
+      const nextLaneElem = document.getElementById(`lane-${clickedLaneIndex + 1}`);
+      if (nextLaneElem) {
+        nextLaneElem.scrollIntoView({ behavior: "smooth", block: "center" });
+      } else {
+        // if there's no "next" lane, scroll this lane into view
+        const lastLaneElem = document.getElementById(`lane-${clickedLaneIndex}`);
+        lastLaneElem?.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }
   };
 
-  /** ✅ Reset Game State when game ends */
+  /**
+   * When the hen finishes its move from `currentLane` -> `targetLane`:
+   *  1) Update currentLane.
+   *  2) If that lane == crashLane, trigger forceCrashCar => CarUi spawns the “crash” car.
+   */
+  const handleMoveComplete = () => {
+    if (targetLane !== null) {
+      setCurrentLane(targetLane);
+
+      // If we just moved onto the crash lane, forcibly spawn the crash car
+      if (crashLane !== null && targetLane === crashLane) {
+        setForceCrashCar(true);
+      }
+
+      // Clear target
+      setTargetLane(null);
+    }
+  };
+
+  // If game stops or restarts, reset everything
   useEffect(() => {
     if (!gameActive) {
       setCurrentLane(0);
       setTargetLane(null);
-      setGameOver(false);
+      setCockDead(false);
+      setForceCrashCar(false);
       setCrashLane(null);
     }
   }, [gameActive]);
 
+  /**
+   * Called by CarUi once the crash car is “over” the hen’s position.
+   * That’s our cue to set the hen’s image to the dead cock.
+   */
+  const handleCrashPass = () => {
+    setCockDead(true);
+  };
+
+  /**
+   * Called by CarUi once the crash car fully exits the game area.
+   * We can then reload or do any cleanup we need.
+   */
+  const handleCrashComplete = () => {
+    window.location.reload();
+  };
+
   return (
     <div className="m-5 h-[25rem] w-fit relative">
       <div className="h-full flex relative">
+        {/* Left Background */}
         <div
           style={{
             background: `url(${LeftRightBg})`,
@@ -121,29 +155,40 @@ const GameUI: React.FC<GameUIProps> = ({
         </div>
 
         {/* Road Lanes */}
-        <div className="flex h-full">
+        <div
+          ref={lanesContainerRef}
+          className="flex h-full overflow-x-auto"
+          style={{ scrollBehavior: "smooth" }}
+        >
           {multipliers.map((value, index) => (
             <RoadUI
               key={index}
-              value={value}
               laneIndex={index + 1}
+              value={value}
               onLaneClick={handleLaneClick}
               isTargetLane={targetLane === index + 1}
               loading={loading}
+              // Hide the wall if this is the crash lane
+              hideWall={crashLane !== null && (index + 1) === crashLane}
             />
           ))}
         </div>
 
-        {/* Car Movement */}
+        {/* Car UI */}
         <div className="absolute top-0 left-[15rem] right-[15rem] bottom-0 pointer-events-none">
           <CarUi
             difficulty={difficulty}
             henLane={currentLane}
             roadWidth={roadWidth}
+            // When forceCrashCar is true, CarUi spawns the crash car in crashLane
+            forceCrashCar={forceCrashCar}
+            crashLane={crashLane}
+            onCrashPass={handleCrashPass}
+            onCrashComplete={handleCrashComplete}
           />
         </div>
 
-        {/* Chicken Animation */}
+        {/* Cock (Hen) UI */}
         <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
           <CockUi
             maxWidth={roadWidth}
@@ -151,9 +196,9 @@ const GameUI: React.FC<GameUIProps> = ({
             targetLane={targetLane}
             currentLane={currentLane}
             onMoveComplete={handleMoveComplete}
-            onHenLaneChange={setCurrentLane}
             crashLane={crashLane}
-            gameOver={gameOver}
+            gameOver={false}
+            cockDead={cockDead}
           />
         </div>
 
@@ -166,15 +211,10 @@ const GameUI: React.FC<GameUIProps> = ({
           }}
           className="overflow-hidden h-full w-[15rem] relative"
         >
-          <img
-            src={RightBg}
-            className="absolute right-0"
-            alt="Right background"
-          />
+          <img src={RightBg} className="absolute right-0" alt="Right background" />
         </div>
       </div>
 
-      {/* Loading Indicator */}
       {loading && gameActive && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/30 z-30">
           <div className="bg-[#1A2C38] p-6 rounded-lg text-center">
@@ -184,33 +224,14 @@ const GameUI: React.FC<GameUIProps> = ({
         </div>
       )}
 
-      {/* Game Over UI */}
-      {gameOver && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black/50 z-30">
-          <div className="bg-[#1A2C38] p-6 rounded-lg text-center">
-            <h2 className="text-2xl font-bold text-red-400">Game Over</h2>
-            <p className="text-gray-400 mt-2">
-              You hit a car! Your payout: 0 SOL
-            </p>
-            <button
-              onClick={() => onGameEnd()}
-              className="mt-4 bg-purple-500 hover:bg-purple-600 text-white font-medium px-4 py-2 rounded-lg"
-            >
-              End Game
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Cash Out Button */}
-      {currentLane > 0 && !gameOver && (
+      {currentLane > 0 && currentLane < (multipliers.length + 1) && (
         <div className="absolute bottom-4 right-4">
           <button
             onClick={() => onGameEnd(currentLane)}
             className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg"
           >
-            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)}{" "}
-            SOL)
+            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)} SOL)
           </button>
         </div>
       )}

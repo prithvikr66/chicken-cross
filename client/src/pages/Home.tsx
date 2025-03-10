@@ -15,7 +15,8 @@ interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
 }
 
-const API_URL = "http://localhost:3000/api";
+const API_URL = import.meta.env.VITE_BACKEND_URI;
+console.log("api", API_URL);
 
 export function Home({ onPageChange }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
@@ -60,7 +61,8 @@ export function Home({ onPageChange }: HomeProps) {
     // ... more mock data
   ];
 
-  const [activeFilter, setActiveFilter] = React.useState<"all" | "high" | "lucky" | "my">("all");
+  const [activeFilter, setActiveFilter] =
+    React.useState<"all" | "high" | "lucky" | "my">("all");
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
