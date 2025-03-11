@@ -6,43 +6,41 @@ import "./RoadUi.css";
 interface RoadUIProps {
   laneIndex: number;
   value: number;
+  gameActive: boolean;
+  currentLane: number;
   onLaneClick: (laneIndex: number) => void;
-  isTargetLane: boolean;
-  loading: boolean;
   hideWall?: boolean;
 }
 
 function RoadUI({
   laneIndex,
   value,
+  currentLane,
+  gameActive,
   onLaneClick,
-  loading,
   hideWall,
 }: RoadUIProps) {
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
 
+  // If this lane is the “next” one to the hen (currentLane+1) AND gameActive => highlight text white
+  const isNext = laneIndex === currentLane + 1 && currentLane >= 0 && gameActive;
+
   const handleClick = () => {
-    if (loading) return;
     setCoinFaded(true);
     setWallFalling(true);
     onLaneClick(laneIndex);
   };
 
-  const bgColor = loading ? "bg-[#252745]" : "bg-[#313464]";
-  const hoverColor = loading ? "" : "hover:bg-[#3b3e70]";
-
   return (
     <div
       id={`lane-${laneIndex}`}
-      className={`${bgColor} border-r-4 border-dashed border-white flex justify-center items-center h-full ${hoverColor} ${
-        loading ? "cursor-not-allowed opacity-70" : "cursor-pointer"
-      }`}
+      className="bg-[#313464] border-r-4 border-dashed border-white flex justify-center items-center h-full hover:bg-[#3b3e70] cursor-pointer"
       style={{ width: "200px" }}
       onClick={handleClick}
     >
       <div className="relative flex items-center justify-center">
-        {/* Only show the wall image if NOT hideWall */}
+        {/* Wall, hidden if hideWall */}
         {!hideWall && (
           <img
             src={wallImg}
@@ -50,6 +48,7 @@ function RoadUI({
             className={`wall-img ${wallFalling ? "fall" : ""}`}
           />
         )}
+
         <img
           src={CoinImg}
           alt="Coin"
@@ -58,11 +57,11 @@ function RoadUI({
           }`}
         />
         <span
-          className={`absolute text-white text-sm font-bold ${
-            coinFaded ? "hidden" : ""
+          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${
+            isNext ? "text-white" : "text-gray-500"
           }`}
         >
-          {value.toFixed(1)}x
+          {value.toFixed(2)}x
         </span>
       </div>
     </div>
