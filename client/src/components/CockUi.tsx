@@ -12,7 +12,7 @@ interface CockUiProps {
   onMoveComplete: () => void;
   crashLane: number | null;
   gameOver: boolean;
-  cockDead: boolean; // If true => show the DeadCockImg
+  cockDead: boolean;
 }
 
 function CockUi({
@@ -29,13 +29,11 @@ function CockUi({
   const [currentImage, setCurrentImage] = useState(CockImg);
 
   function calculateLanePosition(lane: number): number {
-    // offset from left background
     const leftBackgroundWidth = 240;
-    if (lane === 0) return 140; // initial position
+    if (lane === 0) return 140;
     return leftBackgroundWidth + (lane - 1) * laneWidth + laneWidth / 2 - 50;
   }
 
-  // If cockDead is true, immediately show the dead image
   useEffect(() => {
     if (cockDead) {
       setCurrentImage(DeadCockImg);
@@ -43,24 +41,25 @@ function CockUi({
     }
   }, [cockDead]);
 
-  // If targetLane changes, animate the move
+  // Animate whenever targetLane changes
   useEffect(() => {
     if (targetLane !== null && targetLane > currentLane && !cockDead) {
       setIsMoving(true);
       setPosition({ left: calculateLanePosition(targetLane) });
 
-      // The time it takes to move
-      const animationTime = Math.min(800, 300 * (targetLane - currentLane));
-      const timeout = setTimeout(() => {
+      const distance = targetLane - currentLane;
+      const animationTime = Math.min(800, 300 * distance);
+
+      const timer = setTimeout(() => {
         setIsMoving(false);
         onMoveComplete();
       }, animationTime);
 
-      return () => clearTimeout(timeout);
+      return () => clearTimeout(timer);
     }
   }, [targetLane, currentLane, cockDead, onMoveComplete]);
 
-  // Toggle between walk frames while isMoving
+  // Toggle walk frames if isMoving
   useEffect(() => {
     if (isMoving) {
       const interval = setInterval(() => {
@@ -85,9 +84,7 @@ function CockUi({
           bottom: "80px",
           width: "100px",
           height: "100px",
-          transition: cockDead
-            ? "none"
-            : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
+          transition: cockDead ? "none" : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
         }}
       />
     </div>
