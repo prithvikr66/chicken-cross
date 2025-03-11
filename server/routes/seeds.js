@@ -119,17 +119,25 @@ async function getMultipliers(difficulty) {
 }
 
 // New endpoint to fetch multipliers on load
+// New endpoint to fetch all difficulty multipliers
 router.get("/multipliers", async (req, res) => {
-  const { difficulty = "easy" } = req.query; // Default to "easy"
-
-  const validDifficulties = ["easy", "medium", "hard", "daredevil"];
-  if (!validDifficulties.includes(difficulty)) {
-    return res.status(400).json({ error: "Invalid difficulty" });
-  }
-
   try {
-    const multipliers = await getMultipliers(difficulty);
-    res.json({ difficulty, multipliers });
+    const difficulties = ["easy", "medium", "hard", "daredevil"];
+    const allMultipliers = {};
+
+    for (const diff of difficulties) {
+      const multipliers = await getMultipliers(diff);
+      allMultipliers[diff] = multipliers;
+    }
+
+    // Respond with an object like:
+    // {
+    //    easy: [...],
+    //    medium: [...],
+    //    hard: [...],
+    //    daredevil: [...]
+    // }
+    res.json(allMultipliers);
   } catch (error) {
     console.error("Fetch multipliers error:", error);
     res.status(500).json({ error: "Failed to fetch multipliers" });

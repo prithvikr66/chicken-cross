@@ -8,18 +8,34 @@ interface CarUiProps {
   roadWidth: number;
   forceCrashCar?: boolean;
   crashLane?: number;
-  // NEW CALLBACKS to notify GameUI:
-  onCrashPass?: () => void;       // Called when the crash car is “over” the cock
-  onCrashComplete?: () => void;   // Called when the crash car fully exits
+  onCrashPass?: () => void;      // when the crash car passes over the cock
+  onCrashComplete?: () => void;  // when the crash car exits fully
 }
 
 interface CarType {
   id: number;
   lane: number;
   image: string;
-  top: number; // from -50% (above screen) to 120% (exited below)
+  top: number;         // from -50% to 120%
   isCrashCar?: boolean;
+  travelTime: number;  // each car's unique speed
 }
+
+// Lane count
+function getLaneCount(diff: "easy" | "medium" | "hard" | "daredevil") {
+  return diff === "daredevil" ? 5 : 6;
+}
+
+// Normal speeds for random cars
+const speedMap: Record<"easy" | "medium" | "hard" | "daredevil", number> = {
+  easy: 5000,
+  medium: 2000,
+  hard: 800,
+  daredevil: 500,
+};
+
+// We define a fixed, fast speed for the forced crash car.
+const FORCED_CRASH_CAR_SPEED = 700;
 
 const CarUi: React.FC<CarUiProps> = ({
   difficulty,
@@ -32,43 +48,43 @@ const CarUi: React.FC<CarUiProps> = ({
 }) => {
   const [cars, setCars] = useState<CarType[]>([]);
   const nextId = useRef(0);
-  const lanesCount = difficulty === "easy" ? 6 : 5;
-  const crossedLanes = useRef<number[]>([]);
 
-  // Keep track of the crash car’s ID (if any) so we can detect its progress
   const [crashCarId, setCrashCarId] = useState<number | null>(null);
-
-  // Speed at which cars travel from top to bottom:
-  const speedMap: Record<"easy" | "medium" | "hard" | "daredevil", number> = {
-    easy: 5000,
-    medium: 2000,
-    hard: 800,
-    daredevil: 500, // for example
-  };
-  const travelTime = speedMap[difficulty];
-
-  // Keep track of whether we have already triggered "onCrashPass"
   const hasPassedRef = useRef(false);
 
+  // The difficulty used for **new random spawns** (not the forced crash car)
+  const [spawnDifficulty, setSpawnDifficulty] = useState(difficulty);
   useEffect(() => {
-    if (henLane > 0) {
-      const newCrossedLanes = [];
-      for (let i = 1; i <= henLane; i++) {
-        newCrossedLanes.push(i);
-      }
-      crossedLanes.current = newCrossedLanes;
+    // If difficulty changes, new random cars use the new difficulty’s speed
+    setSpawnDifficulty(difficulty);
+  }, [difficulty]);
+
+  // Track which lanes have been crossed => skip random spawns in them
+  const crossedLanesRef = useRef<number[]>([]);
+  useEffect(() => {
+    const arr: number[] = [];
+    for (let i = 1; i <= henLane; i++) {
+      arr.push(i);
     }
+    crossedLanesRef.current = arr;
   }, [henLane]);
 
-  // Regular random car spawning (not the forced crash car)
+  // -------------------------------------------------------------------------
+  // SPAWN RANDOM CARS on an interval
+  // -------------------------------------------------------------------------
   useEffect(() => {
-    const spawnInterval = setInterval(() => {
+    const interval = setInterval(() => {
       setCars((prevCars) => {
-        // Choose a lane where the hen hasn’t already crossed and there’s no existing car
-        const availableLanes = Array.from({ length: lanesCount }, (_, i) => i + 1).filter(
+        const laneCount = getLaneCount(spawnDifficulty);
+        const speed = speedMap[spawnDifficulty]; // normal speed for random cars
+
+        // pick a lane
+        const availableLanes = Array.from({ length: laneCount }, (_, i) => i + 1).filter(
           (lane) =>
-            !crossedLanes.current.includes(lane) &&
-            !prevCars.some((car) => car.lane === lane && !car.isCrashCar)
+            // skip lanes the hen has already crossed
+            !crossedLanesRef.current.includes(lane) &&
+            // skip lanes that already have a random car traveling
+            !prevCars.some((c) => c.lane === lane && !c.isCrashCar)
         );
         if (availableLanes.length === 0) return prevCars;
 
@@ -77,94 +93,95 @@ const CarUi: React.FC<CarUiProps> = ({
         const image = images[Math.floor(Math.random() * images.length)];
 
         const id = nextId.current++;
-        const newCar: CarType = { id, lane, image, top: -50 };
-        // Animate the car downward
+        const newCar: CarType = {
+          id,
+          lane,
+          image,
+          top: -50,
+          travelTime: speed,   // normal difficulty-based speed
+        };
+
+        // Animate it downward
         setTimeout(() => {
-          setCars((currentCars) =>
-            currentCars.map((car) =>
-              car.id === id ? { ...car, top: 120 } : car
-            )
+          setCars((current) =>
+            current.map((c) => (c.id === id ? { ...c, top: 120 } : c))
           );
         }, 50);
 
-        // Remove the car after it exits
+        // Remove after it travels off the screen
         setTimeout(() => {
-          setCars((currentCars) => currentCars.filter((c) => c.id !== id));
-        }, travelTime + 100);
+          setCars((current) => current.filter((c) => c.id !== id));
+        }, speed + 100);
 
         return [...prevCars, newCar];
       });
     }, 2000);
 
-    return () => clearInterval(spawnInterval);
-  }, [difficulty, henLane, lanesCount, travelTime]);
+    return () => clearInterval(interval);
+  }, [spawnDifficulty]);
 
-  /**
-   * Force-spawn a “crash car” in the crashLane, if forceCrashCar is true.
-   * This car is special: isCrashCar = true. We track it in crashCarId state.
-   */
+  // -------------------------------------------------------------------------
+  // FORCE-SPAWN CRASH CAR (FAST)
+  // -------------------------------------------------------------------------
   useEffect(() => {
     if (forceCrashCar && crashLane) {
       const id = nextId.current++;
-      setCrashCarId(id); // remember this is the forced crash car
+      setCrashCarId(id);
+
+      // Force crash car always uses the FAST travel time
       const newCar: CarType = {
         id,
         lane: crashLane,
-        image: Car1Img,
+        image: Car1Img, 
         top: -50,
         isCrashCar: true,
+        travelTime: FORCED_CRASH_CAR_SPEED,  // <-- override normal difficulty speed
       };
 
-      setCars((prevCars) => [...prevCars, newCar]);
+      setCars((prev) => [...prev, newCar]);
 
-      // Animate it downward
+      // Animate it downward quickly
       setTimeout(() => {
-        setCars((currentCars) =>
-          currentCars.map((car) =>
-            car.id === id ? { ...car, top: 120 } : car
-          )
+        setCars((cur) =>
+          cur.map((car) => (car.id === id ? { ...car, top: 120 } : car))
         );
       }, 50);
 
-      // After it exits bottom, remove from state
+      // Remove after it exits
       setTimeout(() => {
-        setCars((currentCars) => currentCars.filter((car) => car.id !== id));
-      }, travelTime + 100);
+        setCars((cur) => cur.filter((c) => c.id !== id));
+      }, FORCED_CRASH_CAR_SPEED + 100);
     }
-  }, [forceCrashCar, crashLane, travelTime]);
+  }, [forceCrashCar, crashLane]);
 
-  /**
-   * Monitor the position of the "crash car" (if any).
-   * If it has reached the hen’s Y-range, call onCrashPass().
-   * If the crash car is removed from state, call onCrashComplete().
-   */
+  // -------------------------------------------------------------------------
+  // Watch the crash car => trigger onCrashPass, onCrashComplete
+  // -------------------------------------------------------------------------
   useEffect(() => {
     if (crashCarId === null) return;
 
-    // Find the crash car in the array
     const crashCar = cars.find((c) => c.id === crashCarId);
-
-    // If the crash car no longer exists in `cars`, that means it was removed => fully exited
+    // If the crash car is gone => it fully exited
     if (!crashCar) {
-      // If we had a crashCar and it's gone, trigger onCrashComplete
       onCrashComplete?.();
       return;
     }
-
-    // If the crash car is around 50% - 60% top, it is “over” the cock
-    // => we call onCrashPass once
+    // If it’s near ~50% top => call onCrashPass
     if (!hasPassedRef.current && crashCar.top >= 50) {
       hasPassedRef.current = true;
       onCrashPass?.();
     }
   }, [cars, crashCarId, onCrashPass, onCrashComplete]);
 
+  // -------------------------------------------------------------------------
+  // RENDER
+  // -------------------------------------------------------------------------
   return (
-    <div className="relative w-full h-full overflow-hidden z-10">
+    <div className="relative w-full h-full overflow-hidden z-30">
       {cars.map((car) => (
         <div
           key={car.id}
-          className="absolute transition-all ease-linear z-10"
+          className="absolute transition-all ease-linear z-30"
           style={{
             top: `${car.top}%`,
             left: `${(car.lane - 1) * roadWidth}px`,
@@ -172,7 +189,7 @@ const CarUi: React.FC<CarUiProps> = ({
             height: "100px",
             display: "flex",
             justifyContent: "center",
-            transitionDuration: `${travelTime}ms`,
+            transitionDuration: `${car.travelTime}ms`, // each car's unique speed
           }}
         >
           <img src={car.image} alt="Car" className="w-[400px] h-[150px]" />

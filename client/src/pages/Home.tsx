@@ -1,12 +1,6 @@
 import React from "react";
 import { useWallet } from "@solana/wallet-adapter-react";
-import {
-  UserCircle2,
-  Wallet,
-  ChevronDown,
-  Plus,
-  LogOut,
-} from "lucide-react";
+import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import GameUI from "../components/GameUI";
 import axios from "axios";
 import nacl from "tweetnacl";
@@ -16,7 +10,6 @@ interface HomeProps {
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
-console.log("api", API_URL);
 
 export function Home({ onPageChange }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
@@ -27,7 +20,13 @@ export function Home({ onPageChange }: HomeProps) {
   const [clientSeed, setClientSeed] = React.useState("");
   const [serverSeedHash, setServerSeedHash] = React.useState("");
   const [seedPairId, setSeedPairId] = React.useState("");
+  // We'll have one big object for all difficulty multipliers
+  const [allMultipliers, setAllMultipliers] = React.useState<{
+    [key: string]: number[];
+  } | null>(null);
+  // The actual array we show in GameUI
   const [multipliers, setMultipliers] = React.useState<number[]>([]);
+
   const [encryptedCrashLane, setEncryptedCrashLane] = React.useState<number>();
   const [nonce, setNonce] = React.useState<string>("");
   const [keyPair, setKeyPair] = React.useState<nacl.BoxKeyPair | null>(null);
@@ -36,12 +35,13 @@ export function Home({ onPageChange }: HomeProps) {
   const [difficulty, setDifficulty] = React.useState<
     "easy" | "medium" | "hard" | "daredevil"
   >("easy");
-  const [showMultipliersState, setShowMultipliersState] = React.useState(true);
+  const [showMultipliersState, setShowMultipliersState] =
+    React.useState(true);
   const [error, setError] = React.useState("");
-  const [balance, setBalance] = React.useState<number | null>(null);
-  const [loading, setLoading] = React.useState(true); // For multiplier fetch
+  // We'll only show a loading spinner for the initial load
+  const [loading, setLoading] = React.useState(true);
 
-  // Mock data for demonstration
+  // Example data
   const wins = [
     { id: 1, rank: 1, amount: 12500, wager: 250, multiplier: 50 },
     { id: 2, rank: 2, amount: 8750, wager: 175, multiplier: 200 },
@@ -58,11 +58,11 @@ export function Home({ onPageChange }: HomeProps) {
       multiplier: 150.0,
       payout: 15000,
     },
-    // ... more mock data
+    // ...
   ];
-
-  const [activeFilter, setActiveFilter] =
-    React.useState<"all" | "high" | "lucky" | "my">("all");
+  const [activeFilter, setActiveFilter] = React.useState<"all" | "high" | "lucky" | "my">(
+    "all"
+  );
 
   React.useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -74,29 +74,34 @@ export function Home({ onPageChange }: HomeProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Fetch balance and default multipliers on load
+  // -------------------------------------------------------------------------
+  // Fetch user balance & all multipliers ONCE (or on wallet change).
+  // -------------------------------------------------------------------------
   React.useEffect(() => {
-    const fetchInitialData = async () => {
+    const fetchData = async () => {
       setLoading(true);
       const token = localStorage.getItem("authToken");
 
       try {
+        // If user is logged in & has a wallet
         if (token && publicKey) {
           const balanceResponse = await axios.get(`${API_URL}/user/profile`, {
             headers: { Authorization: `Bearer ${token}` },
           });
-          setBalance(balanceResponse.data.account_balance || 0);
+          const userBal = balanceResponse.data.account_balance || 0;
+          // set some numeric balance
+          setBalance(userBal);
         }
 
-        // Fetch multipliers (default to "easy" on load)
-        const multipliersResponse = await axios.get(
-          `${API_URL}/seeds/multipliers`,
-          {
-            params: { difficulty: "easy" },
-            headers: { Authorization: `Bearer ${token}` },
-          }
-        );
-        setMultipliers(multipliersResponse.data.multipliers);
+        // Fetch all difficulties multipliers just once
+        const allResponse = await axios.get(`${API_URL}/seeds/multipliers`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        // shape of data => { easy: [...], medium: [...], hard: [...], daredevil: [...] }
+        setAllMultipliers(allResponse.data);
+
+        // For the initial difficulty
+        setMultipliers(allResponse.data[difficulty]);
       } catch (err: any) {
         setError(
           "Failed to load initial data: " +
@@ -106,47 +111,34 @@ export function Home({ onPageChange }: HomeProps) {
         setLoading(false);
       }
     };
-    fetchInitialData();
-  }, [publicKey]);
 
-  // Fetch multipliers whenever difficulty changes and game is not active
+    fetchData();
+  }, [publicKey]); // <-- Only run on mount or when wallet changes (NOT on difficulty change!)
+
+  // -------------------------------------------------------------------------
+  // If difficulty changes but the game is NOT active,
+  // switch to that difficulty's multiplier array WITHOUT showing spinner.
+  // -------------------------------------------------------------------------
   React.useEffect(() => {
-    if (!gameActive) {
-      const fetchMultipliers = async () => {
-        setLoading(true);
-        try {
-          const authToken = localStorage.getItem("authToken");
-          if (!authToken) {
-            throw new Error("No auth token found");
-          }
-          const response = await axios.get(`${API_URL}/seeds/multipliers`, {
-            params: { difficulty },
-            headers: {
-              Authorization: `Bearer ${authToken}`,
-            },
-          });
-          setMultipliers(response.data.multipliers);
-        } catch (err: any) {
-          setError(
-            "Failed to fetch multipliers: " +
-              (err.response?.data?.error || err.message)
-          );
-        } finally {
-          setLoading(false);
-        }
-      };
-      fetchMultipliers();
+    if (!gameActive && allMultipliers) {
+      setMultipliers(allMultipliers[difficulty]);
     }
-  }, [difficulty, gameActive]);
+  }, [difficulty, gameActive, allMultipliers]);
 
+  // -------------------------------------------------------------------------
+  // State for user balance
+  // -------------------------------------------------------------------------
+  const [balance, setBalance] = React.useState<number | null>(null);
+
+  // -------------------------------------------------------------------------
+  // Start Game
+  // -------------------------------------------------------------------------
   const handleStartGame = async () => {
-    // If no wallet is connected
     if (!publicKey) {
       setError("Please connect your wallet.");
       return;
     }
 
-    // Check bet amount
     const bet = parseFloat(betAmount);
     if (isNaN(bet) || bet < 0) {
       setError("Please enter a valid bet amount.");
@@ -157,7 +149,6 @@ export function Home({ onPageChange }: HomeProps) {
       return;
     }
 
-    // Check auth token
     const token = localStorage.getItem("authToken");
     if (!token) {
       setError("Please log in.");
@@ -165,7 +156,7 @@ export function Home({ onPageChange }: HomeProps) {
     }
 
     try {
-      // 1) Generate client seed and keys first
+      // Generate client seed
       const randomBytes = new Uint8Array(16);
       window.crypto.getRandomValues(randomBytes);
       const newClientSeed = `ChickenCross-${Array.from(randomBytes)
@@ -177,21 +168,20 @@ export function Home({ onPageChange }: HomeProps) {
       setKeyPair(newKeyPair);
       setError("");
 
-      // 2) Immediately call /seeds/create with the new client seed
+      // Call /seeds/create
       const response = await axios.post(
         `${API_URL}/seeds/create`,
         { clientSeed: newClientSeed, difficulty, betAmount: bet },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // 3) Store all returned data in state
+      // Store the newly created game data
       setSeedPairId(response.data.seedPairId);
       setServerSeedHash(response.data.serverSeedHash);
-      setMultipliers(response.data.multipliers);
+      setMultipliers(response.data.multipliers); // from server
       setEncryptedCrashLane(response.data.encryptedCrashLane);
       setNonce(response.data.nonce);
 
-      // 4) Mark the game as active
       setGameActive(true);
       setError("");
     } catch (err: any) {
@@ -201,6 +191,9 @@ export function Home({ onPageChange }: HomeProps) {
     }
   };
 
+  // -------------------------------------------------------------------------
+  // End Game
+  // -------------------------------------------------------------------------
   const handleEndGame = async (cashOutLane?: number) => {
     if (!seedPairId) return;
 
@@ -218,7 +211,7 @@ export function Home({ onPageChange }: HomeProps) {
         response.data.crashLane
       );
 
-      // Update balance if there was a non-zero wager
+      // if bet is > 0, update user’s balance
       if (parseFloat(betAmount) > 0) {
         setBalance((prev) =>
           prev !== null
@@ -227,7 +220,7 @@ export function Home({ onPageChange }: HomeProps) {
         );
       }
 
-      // Reset states
+      // reset states
       setGameActive(false);
       setClientSeed("");
       setSeedPairId("");
@@ -242,6 +235,7 @@ export function Home({ onPageChange }: HomeProps) {
     }
   };
 
+  // Handle bet changes
   const handleBetChange = (value: string) => {
     const cleanValue = value.replace(/[^\d.]/g, "");
     const parts = cleanValue.split(".");
@@ -249,11 +243,20 @@ export function Home({ onPageChange }: HomeProps) {
       parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
     setBetAmount(formatted);
   };
-
   const handleQuickBet = (multiplier: number) => {
     const currentValue = parseFloat(betAmount) || 0;
     setBetAmount((currentValue * multiplier).toFixed(2));
   };
+
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+        setShowProfileMenu(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   return (
     <div className="min-h-screen bg-[#0F1923] text-white">
@@ -350,6 +353,7 @@ export function Home({ onPageChange }: HomeProps) {
           </div>
 
           {loading ? (
+            // Only show spinner on first load, not on difficulty changes
             <div className="text-center">
               <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
               <p className="mt-2 text-gray-400">Loading game data...</p>
@@ -447,7 +451,7 @@ export function Home({ onPageChange }: HomeProps) {
                                   ? "bg-purple-500 text-white"
                                   : "bg-white/5 text-gray-400 hover:bg-white/10"
                               }`}
-                              disabled={gameActive}
+                              disabled={gameActive} // can't switch difficulty mid-game
                             >
                               {level}
                             </button>
@@ -470,38 +474,39 @@ export function Home({ onPageChange }: HomeProps) {
                         {showMultipliersState ? "Hide" : "Show"}
                       </button>
                     </div>
+
                     {showMultipliersState && multipliers.length > 0 && (
                       <div className="grid grid-cols-3 gap-2 text-center">
-                        {multipliers.map((multiplier, index) => (
-                          <div key={index} className="bg-white/5 rounded-lg p-2">
+                        {multipliers.map((val, i) => (
+                          <div key={i} className="bg-white/5 rounded-lg p-2">
                             <span className="text-yellow-400 font-medium">
-                              {multiplier.toFixed(2)}×
+                              {val.toFixed(2)}×
                             </span>
                           </div>
                         ))}
                       </div>
                     )}
-                  </div>
 
-                  {/* Start Button (desktop) */}
-                  <div className="hidden lg:flex flex-col justify-center">
-                    <div className="text-center mb-2">
-                      <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
-                        Betting 0 SOL enters demo mode
-                      </span>
+                    {/* Start Button (desktop) */}
+                    <div className="hidden lg:flex flex-col justify-center mt-4">
+                      <div className="text-center mb-2">
+                        <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
+                          Betting 0 SOL enters demo mode
+                        </span>
+                      </div>
+                      <button
+                        onClick={handleStartGame}
+                        className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]"
+                        disabled={gameActive}
+                      >
+                        Start Game
+                      </button>
+                      <p className="text-center text-sm text-gray-400 mt-4">
+                        {parseFloat(betAmount) === 0
+                          ? "Demo Mode"
+                          : `Playing on ${difficulty} mode`}
+                      </p>
                     </div>
-                    <button
-                      onClick={handleStartGame}
-                      className="w-full bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]"
-                      disabled={gameActive}
-                    >
-                      Start Game
-                    </button>
-                    <p className="text-center text-sm text-gray-400 mt-4">
-                      {parseFloat(betAmount) === 0
-                        ? "Demo Mode"
-                        : `Playing on ${difficulty} mode`}
-                    </p>
                   </div>
                 </div>
                 {error && (
