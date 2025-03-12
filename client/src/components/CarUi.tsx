@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import Car1Img from "../assets/car_1.svg";
 import Car2Img from "../assets/car_2.svg";
+import Car3Img from "../assets/car_3.svg";
+import Car4Img from "../assets/car_4.svg";
+import Car5Img from "../assets/car_5.svg";
 
 interface CarUiProps {
   difficulty: "easy" | "medium" | "hard" | "daredevil";
@@ -61,7 +64,7 @@ const CarUi: React.FC<CarUiProps> = ({
   useEffect(() => {
     if (henLane > 0) {
       const arr: number[] = [];
-      for (let i = 1; i <= henLane; i++) {
+      for (let i = 1; i <= henLane+1; i++) {
         arr.push(i);
       }
       crossedLanesRef.current = arr;
@@ -83,7 +86,7 @@ const CarUi: React.FC<CarUiProps> = ({
         if (available.length === 0) return prev;
 
         const lane = available[Math.floor(Math.random() * available.length)];
-        const images = [Car1Img, Car2Img];
+        const images = [Car1Img, Car2Img,Car3Img,Car4Img,Car5Img];
         const image = images[Math.floor(Math.random() * images.length)];
 
         const id = nextId.current++;
