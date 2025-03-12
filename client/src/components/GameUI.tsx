@@ -57,37 +57,53 @@ const GameUI: React.FC<GameUIProps> = ({
     }
   }, [gameActive]);
 
+  // When the game starts, ensure the first lane is in view for mobile devices
+  useEffect(() => {
+    if (gameActive) {
+      const isMobile = window.innerWidth <= 768; // Common breakpoint for mobile devices
+      if (isMobile) {
+        const firstLaneElement = document.getElementById(`lane-1`);
+        if (firstLaneElement) {
+          firstLaneElement.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: "center", // Scroll to the start of the first lane
+          });
+        }
+      }
+    }
+  }, [gameActive]);
+
   // When user clicks a lane => set targetLane
   const handleLaneClick = (clickedLaneIndex: number) => {
     if (!gameActive) return;
     setTargetLane(clickedLaneIndex);
   };
 
-  // Once the hen moves from currentLane -> targetLane
+  // Update the handleMoveComplete function in GameUI.tsx
   const handleMoveComplete = () => {
     if (targetLane !== null) {
       setCurrentLane(targetLane);
 
-      // If that lane is crash => spawn crash car
       if (crashLane && targetLane === crashLane) {
         setForceCrashCar(true);
       }
       setTargetLane(null);
+
+      // Auto-scroll to keep hen in view
+      const laneElement = document.getElementById(`lane-${targetLane + 1}`);
+      if (laneElement) {
+        // Detect if the device is likely a mobile device based on screen width
+        const isMobile = window.innerWidth <= 768; // Common breakpoint for mobile devices
+
+        laneElement.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+          inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
+        });
+      }
     }
   };
-
-  // AUTO-SCROLL: each time currentLane changes, scroll so that the new lane is in view
-  useEffect(() => {
-    if (!gameActive) return;
-    if (!lanesContainerRef.current) return;
-    if (currentLane < 1) return; // lane 0 => no scroll needed
-    // We'll scroll so that lane `currentLane` is at the left edge
-    const offset = (currentLane - 1) * roadWidth;
-    lanesContainerRef.current.scrollTo({
-      left: offset,
-      behavior: "smooth",
-    });
-  }, [currentLane, gameActive]);
 
   // Crash Car passes => cock dead
   const handleCrashPass = () => {
@@ -113,12 +129,10 @@ const GameUI: React.FC<GameUIProps> = ({
         >
           <img src={LeftBg} className="absolute left-0" alt="Left background" />
         </div>
-
         {/* Road lanes */}
         <div
           ref={lanesContainerRef}
-          className="flex h-full overflow-x-auto"
-          style={{ scrollBehavior: "smooth" }}
+          className="flex h-full overflow-x-auto lanes-container"
         >
           {multipliers.map((value, index) => (
             <RoadUI
@@ -132,7 +146,6 @@ const GameUI: React.FC<GameUIProps> = ({
             />
           ))}
         </div>
-
         {/* Car UI */}
         <div className="absolute top-0 left-[15rem] right-[15rem] bottom-0 pointer-events-none">
           <CarUi
@@ -145,7 +158,6 @@ const GameUI: React.FC<GameUIProps> = ({
             onCrashComplete={handleCrashComplete}
           />
         </div>
-
         {/* Cock UI */}
         <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
           <CockUi
@@ -159,7 +171,6 @@ const GameUI: React.FC<GameUIProps> = ({
             cockDead={cockDead}
           />
         </div>
-
         {/* Right BG */}
         <div
           style={{
@@ -169,7 +180,11 @@ const GameUI: React.FC<GameUIProps> = ({
           }}
           className="overflow-hidden h-full w-[15rem] relative"
         >
-          <img src={RightBg} className="absolute right-0" alt="Right background" />
+          <img
+            src={RightBg}
+            className="absolute right-0"
+            alt="Right background"
+          />
         </div>
       </div>
 
@@ -180,7 +195,8 @@ const GameUI: React.FC<GameUIProps> = ({
             onClick={() => onGameEnd(currentLane)}
             className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg"
           >
-            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)} SOL)
+            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)}{" "}
+            SOL)
           </button>
         </div>
       )}

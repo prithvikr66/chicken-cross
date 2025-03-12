@@ -36,9 +36,9 @@ export function Home({ onPageChange }: HomeProps) {
   const [serverSeedHash, setServerSeedHash] = useState("");
   const [clientSeed, setClientSeed] = useState("");
   const [multipliers, setMultipliers] = useState<number[]>([]);
-  const [encryptedCrashLane, setEncryptedCrashLane] = useState<number | undefined>(
-    undefined
-  );
+  const [encryptedCrashLane, setEncryptedCrashLane] = useState<
+    number | undefined
+  >(undefined);
   const [nonce, setNonce] = useState<string>("");
 
   // The game only becomes “active” after user clicks “Start Game”
@@ -49,9 +49,9 @@ export function Home({ onPageChange }: HomeProps) {
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "daredevil">(
-    "easy"
-  );
+  const [difficulty, setDifficulty] = useState<
+    "easy" | "medium" | "hard" | "daredevil"
+  >("easy");
 
   // Error / loading
   const [error, setError] = useState("");
@@ -73,21 +73,29 @@ export function Home({ onPageChange }: HomeProps) {
 
       try {
         if (token && publicKey) {
-          const balanceResponse = await axios.get(`${API_URL}/api/user/profile`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const balanceResponse = await axios.get(
+            `${API_URL}/api/user/profile`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
           setBalance(balanceResponse.data.account_balance || 0);
         }
 
         // Fetch "all difficulties" multipliers if you want them
-        const allResponse = await axios.get(`${API_URL}/api/seeds/multipliers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const allResponse = await axios.get(
+          `${API_URL}/api/seeds/multipliers`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setAllMultipliers(allResponse.data);
         // By default, set multipliers to our current difficulty
         setMultipliers(allResponse.data[difficulty]);
       } catch (err: any) {
-        setError("Failed to load data: " + (err.response?.data?.error || err.message));
+        setError(
+          "Failed to load data: " + (err.response?.data?.error || err.message)
+        );
       } finally {
         setInitialLoading(false);
       }
@@ -148,7 +156,10 @@ export function Home({ onPageChange }: HomeProps) {
         setNonce(response.data.nonce);
         setError("");
       } catch (err: any) {
-        setError("Failed to create seed pair: " + (err.response?.data?.error || err.message));
+        setError(
+          "Failed to create seed pair: " +
+            (err.response?.data?.error || err.message)
+        );
       } finally {
         setIsCreating(false); // re-enable Start Game
       }
@@ -202,7 +213,9 @@ export function Home({ onPageChange }: HomeProps) {
       setNonce("");
       setKeyPair(null);
     } catch (err: any) {
-      setError("Failed to end game: " + (err.response?.data?.error || err.message));
+      setError(
+        "Failed to end game: " + (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -210,7 +223,8 @@ export function Home({ onPageChange }: HomeProps) {
   const handleBetChange = (value: string) => {
     const cleanValue = value.replace(/[^\d.]/g, "");
     const parts = cleanValue.split(".");
-    const formatted = parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
+    const formatted =
+      parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
     setBetAmount(formatted);
   };
   const handleQuickBet = (multiplier: number) => {
@@ -232,7 +246,9 @@ export function Home({ onPageChange }: HomeProps) {
                 <div className="flex items-center space-x-2">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium">
-                    {balance !== null ? `${balance.toFixed(2)} SOL` : "Loading..."}
+                    {balance !== null
+                      ? `${balance.toFixed(2)} SOL`
+                      : "Loading..."}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
@@ -364,20 +380,22 @@ export function Home({ onPageChange }: HomeProps) {
                       Difficulty
                     </label>
                     <div className="grid grid-cols-4 gap-2">
-                      {(["easy", "medium", "hard", "daredevil"] as const).map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => setDifficulty(level)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
-                            difficulty === level
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 text-gray-400 hover:bg-white/10"
-                          }`}
-                          disabled={gameActive}
-                        >
-                          {level}
-                        </button>
-                      ))}
+                      {(["easy", "medium", "hard", "daredevil"] as const).map(
+                        (level) => (
+                          <button
+                            key={level}
+                            onClick={() => setDifficulty(level)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
+                              difficulty === level
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            }`}
+                            disabled={gameActive}
+                          >
+                            {level}
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -393,9 +411,10 @@ export function Home({ onPageChange }: HomeProps) {
                       // disable if game is active OR we're still fetching /create
                       disabled={gameActive || isCreating}
                       className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
-                        ${gameActive || isCreating
-                          ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                          : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
+                        ${
+                          gameActive || isCreating
+                            ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                            : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
                         }`}
                     >
                       {isCreating ? "Start Game" : "Start Game"}
@@ -418,9 +437,10 @@ export function Home({ onPageChange }: HomeProps) {
                     onClick={handleStartGame}
                     disabled={gameActive || isCreating}
                     className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
-                      ${gameActive || isCreating
-                        ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                        : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
+                      ${
+                        gameActive || isCreating
+                          ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                          : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
                       }`}
                   >
                     {isCreating ? "Start Game" : "Start Game"}

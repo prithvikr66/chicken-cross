@@ -24,7 +24,8 @@ function RoadUI({
   const [wallFalling, setWallFalling] = useState(false);
 
   // If this lane is the “next” one to the hen (currentLane+1) AND gameActive => highlight text white
-  const isNext = laneIndex === currentLane + 1 && currentLane >= 0 && gameActive;
+  const isNext =
+    laneIndex === currentLane + 1 && currentLane >= 0 && gameActive;
 
   const handleClick = () => {
     setCoinFaded(true);
@@ -33,8 +34,9 @@ function RoadUI({
   };
 
   return (
+    // In RoadUI.tsx, maintain the ID structure
     <div
-      id={`lane-${laneIndex}`}
+      id={`lane-${laneIndex}`} // Keep this ID format
       className="bg-[#313464] border-r-4 border-dashed border-white flex justify-center items-center h-full hover:bg-[#3b3e70] cursor-pointer"
       style={{ width: "200px" }}
       onClick={handleClick}
@@ -52,7 +54,7 @@ function RoadUI({
         <img
           src={CoinImg}
           alt="Coin"
-          className={`w-16 h-16 coin-img ${
+          className={` coin-img ${
             coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
           }`}
         />
