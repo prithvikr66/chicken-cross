@@ -25,7 +25,7 @@ const GameUI: React.FC<GameUIProps> = ({
   gameActive,
   onGameEnd,
 }) => {
-  const roadWidth = 200;
+  const roadWidth = 155;
 
   // We track the hen's lane states
   const [currentLane, setCurrentLane] = useState<number>(0);
@@ -67,7 +67,7 @@ const GameUI: React.FC<GameUIProps> = ({
           firstLaneElement.scrollIntoView({
             behavior: "smooth",
             block: "nearest",
-            inline: "center", // Scroll to the start of the first lane
+            inline: "end", // Scroll to the start of the first lane
           });
         }
       }
@@ -116,7 +116,7 @@ const GameUI: React.FC<GameUIProps> = ({
   };
 
   return (
-    <div className="m-5 h-[25rem] w-fit relative">
+    <div className="lg:m-5 h-[20rem] lg:h-[25rem] w-fit relative">
       <div className="h-full flex relative">
         {/* Left BG */}
         <div
@@ -125,14 +125,14 @@ const GameUI: React.FC<GameUIProps> = ({
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
           }}
-          className="overflow-hidden h-full w-[15rem] relative"
+          className="overflow-hidden h-full w-[10rem] relative"
         >
           <img src={LeftBg} className="absolute left-0" alt="Left background" />
         </div>
         {/* Road lanes */}
         <div
           ref={lanesContainerRef}
-          className="flex h-full overflow-x-auto lanes-container"
+          className="flex h-full  overflow-x-auto lanes-container "
         >
           {multipliers.map((value, index) => (
             <RoadUI
@@ -147,7 +147,7 @@ const GameUI: React.FC<GameUIProps> = ({
           ))}
         </div>
         {/* Car UI */}
-        <div className="absolute top-0 left-[15rem] right-[15rem] bottom-0 pointer-events-none">
+        <div className="absolute top-0 left-[10rem] right-[10rem]  bottom-0 pointer-events-none">
           <CarUi
             difficulty={difficulty}
             henLane={currentLane}
@@ -178,7 +178,7 @@ const GameUI: React.FC<GameUIProps> = ({
             backgroundRepeat: "no-repeat",
             backgroundSize: "cover",
           }}
-          className="overflow-hidden h-full w-[15rem] relative"
+          className="overflow-hidden h-full w-[10rem] relative"
         >
           <img
             src={RightBg}

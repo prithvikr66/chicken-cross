@@ -38,7 +38,7 @@ function RoadUI({
     <div
       id={`lane-${laneIndex}`} // Keep this ID format
       className="bg-[#313464] border-r-4 border-dashed border-white flex justify-center items-center h-full hover:bg-[#3b3e70] cursor-pointer"
-      style={{ width: "200px" }}
+      style={{ minWidth: "155px" }}
       onClick={handleClick}
     >
       <div className="relative flex items-center justify-center">

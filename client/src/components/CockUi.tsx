@@ -21,7 +21,7 @@ function CockUi({
   onMoveComplete,
   cockDead,
 }: CockUiProps) {
-  const laneWidth = 200;
+  const laneWidth = 150;
   const [position, setPosition] = useState({
     left: calculateLanePosition(currentLane),
   });
@@ -29,8 +29,8 @@ function CockUi({
   const [currentImage, setCurrentImage] = useState(CockImg);
 
   function calculateLanePosition(lane: number): number {
-    const leftBackgroundWidth = 240;
-    if (lane === 0) return 140;
+    const leftBackgroundWidth = 160;
+    if (lane === 0) return 75;
     return leftBackgroundWidth + (lane - 1) * laneWidth + laneWidth / 2 - 50;
   }
 
@@ -81,9 +81,9 @@ function CockUi({
         className="absolute z-20"
         style={{
           left: `${position.left}px`,
-          bottom: "80px",
-          width: "100px",
-          height: "100px",
+          bottom: "100px",
+          width: "85px",
+          height: "85px",
           transition: cockDead ? "none" : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
         }}
       />
