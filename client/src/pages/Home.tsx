@@ -206,10 +206,6 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
         { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      
-      window.location.reload();
-
       // update balance if bet > 0
       if (parseFloat(betAmount) > 0) {
         const endgame = await axios.post(
@@ -217,7 +213,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
           {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(2) },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-
+        console.log(endgame.data)
         setBalance(endgame.data.newBalance)
       }
 
@@ -229,6 +225,8 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       setEncryptedCrashLane(undefined);
       setNonce("");
       setKeyPair(null);
+      window.location.reload();
+
     } catch (err: any) {
       setError(
         "Failed to end game: " + (err.response?.data?.error || err.message)
