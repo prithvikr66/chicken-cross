@@ -14,7 +14,6 @@ router.get("/profile", async (req, res) => {
   const {
     walletAddress
   } = req;
-console.log("inside porfile route")
   const {
     data,
     error
