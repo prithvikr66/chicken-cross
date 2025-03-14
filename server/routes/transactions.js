@@ -23,10 +23,13 @@ router.get("/fetch-transactions", async (req, res) => {
   }
 
   try {
+    // Fetch the latest 20 transactions for the specified wallet address
     const { data: transactions, error } = await supabase
       .from("transactions")
       .select("*")
-      .eq("wallet_address", wallet_address);
+      .eq("wallet_address", wallet_address) // Filter by wallet address
+      .order("created_at", { ascending: false }) // Sort by created_at in descending order (newest first)
+      .limit(20); // Limit to 20 transactions
 
     if (error) {
       throw new Error(`Error fetching transactions: ${error.message}`);
@@ -37,9 +40,11 @@ router.get("/fetch-transactions", async (req, res) => {
         .status(404)
         .json({ message: "No transactions found for this wallet address" });
     }
+
+    // Return the transactions (latest first, oldest last)
     res.status(200).json({ transactions });
   } catch (error) {
-    console.error("Error in /transactions route:", error);
+    console.error("Error in /fetch-transactions route:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
@@ -162,5 +167,45 @@ router.post("/deposits/verify", async (req, res) => {
     res.status(500).json({ error: "Failed to verify transfer" });
   }
 });
+
+router.get('/game-history', async (req, res) => {
+  const walletAddress = req.query.wallet_address;
+
+  if (!walletAddress) {
+      return res.status(400).json({ error: 'Wallet address is required' });
+  }
+
+  try {
+    const { data: userData, error: userError } = await supabase
+            .from('users')
+            .select('total_wag, total_won, total_bets')
+            .eq('wallet_address', walletAddress)
+            .single(); 
+        if (userError) throw userError;
+
+        const { data: transactions, error: transactionsError } = await supabase
+        .from('game_history')
+        .select('*')
+        .eq('wallet_address', walletAddress)
+        .order('created_at', { ascending: false })
+        .limit(20);
+
+    if (transactionsError) throw transactionsError;
+
+    const response = {
+      user_stats: {
+          total_wag: userData.total_wag,
+          total_won: userData.total_won,
+          total_bets: userData.total_bets,
+      },
+      transactions: transactions,
+  };
+
+  res.json(response);
+  } catch (err) {
+      res.status(500).json({ error: err.message });
+  }
+});
+
 
 export const transactionRoutes = router;

@@ -1,0 +1,27 @@
+/* Coin fade-out animation */
+.coin-img {
+  opacity: 1;
+  transition: opacity 0.2s ease-out;
+}
+
+.coin-img.fade-out {
+  opacity: 0;
+}
+
+/* Wall falling animation */
+/* Initially, the wall is hidden off-view with opacity 0 */
+.wall-img {
+  position: absolute;
+  top: 0;
+  transition: transform 0.3s ease-in, opacity 0.3s ease-in;
+  z-index: 1;
+  transform: translateY(-200%);
+  opacity: 0;
+}
+
+/* When the lane is clicked, the wall falls into view */
+.wall-img.fall {
+  transform: translateY(-40%);
+  opacity: 1;
+  z-index: 10;
+}

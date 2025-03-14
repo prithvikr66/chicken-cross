@@ -1,7 +1,7 @@
 {
   "type": "module",
   "scripts": {
-    "dev": "node --env-file=.env index.js"
+    "dev": "nodemon --env-file=.env index.js"
   },
   "dependencies": {
     "@solana/web3.js": "^1.98.0",
@@ -14,6 +14,7 @@
     "multer": "^1.4.5-lts.1",
     "nodemon": "^3.1.9",
     "tweetnacl": "^1.0.3",
+    "tweetnacl-util": "^0.15.1",
     "uuid": "^11.1.0"
   }
 }

@@ -14,12 +14,18 @@ function App() {
   const [currentPage, setCurrentPage] = React.useState<"home" | "profile">(
     "home"
   );
+    const [showDepositModal, setShowDepositModal] = React.useState(false);
+  
 
   React.useEffect(() => {
     const token = localStorage.getItem("authToken");
     if (token) setSignedIn(true);1
   }, []);
 
+  const navigateToProfileWithModal = () => {
+    setCurrentPage('profile');
+    setShowDepositModal(true)
+};
   const handleSignIn = async () => {
     try {
       if (!connected || !publicKey || !signMessage) {
@@ -106,9 +112,9 @@ function App() {
           </div>
         </div>
       ) : currentPage === "home" ? (
-        <Home onPageChange={setCurrentPage} />
+        <Home onPageChange={setCurrentPage} navigateToProfileWithModal={navigateToProfileWithModal}/>
       ) : (
-        <Profile onPageChange={setCurrentPage} />
+        <Profile onPageChange={setCurrentPage} showDepositModal={showDepositModal} setShowDepositModal={setShowDepositModal}/>
       )}
     </div>
   );

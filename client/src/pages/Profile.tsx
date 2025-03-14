@@ -17,30 +17,50 @@ import {
   Upload,
   X,
 } from "lucide-react";
-import {
-  Connection,
-  LAMPORTS_PER_SOL,
-} from "@solana/web3.js";
-import {  useHandleDeposits } from "../utils/Deposits";
+import { Connection, LAMPORTS_PER_SOL } from "@solana/web3.js";
+import { useHandleDeposits } from "../utils/Deposits";
+
 interface ProfileProps {
   onPageChange: (page: "home" | "profile") => void;
+  showDepositModal:any;
+  setShowDepositModal:any
 }
 
-export function Profile({ onPageChange }: ProfileProps) {
+interface BettingHistory {
+  id: string;
+  wallet_address: string;
+  seed_pair_id: string;
+  bet_amount: number;
+  payout: number;
+  cash_out_lane: number;
+  crash_lane: number;
+  difficulty: string;
+  created_at: string;
+}
+
+interface GameHistoryResponse {
+  user_stats: {
+    total_wag: number;
+    total_won: number;
+    total_bets: number;
+  };
+  transactions: BettingHistory[];
+}
+
+export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: ProfileProps) {
   const { publicKey, disconnect } = useWallet();
   const [, setIsEditing] = React.useState(false);
   const [showSettings, setShowSettings] = React.useState(false);
-  const [showDepositModal, setShowDepositModal] = React.useState(false);
   const [depositAmount, setDepositAmount] = React.useState("");
   const [showSuccess, setShowSuccess] = React.useState(false);
   const [showWithdrawModal, setShowWithdrawModal] = React.useState(false);
   const [withdrawAmount, setWithdrawAmount] = React.useState("");
   const [showSettingsSuccess, setShowSettingsSuccess] = React.useState(false);
- 
+
   const [imagePreview, setImagePreview] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [walletBalance, setWalletBalance] = React.useState<number>(0);
-  const { handleDeposits, } = useHandleDeposits();
+  const { handleDeposits } = useHandleDeposits();
   const [profile, setProfile] = React.useState({
     username: "",
     name: "",
@@ -56,21 +76,39 @@ export function Profile({ onPageChange }: ProfileProps) {
   });
 
   const [isTransactionPending, setIsTransactionPending] = React.useState(false);
-  const [transactionError, setTransactionError] = React.useState<string | null>(null);
-  const [transactions, setTransactions] = React.useState<Array<{
-    id: string;
-    wallet_address: string;
-    amount: number;
-    transaction_type: string;
-    status: string;
-    signature: string;
-    created_at: string;
-    updated_at: string;
-    fee: number | null;
-    notes: string | null;
-    error_message: string | null;
-  }>>([]);
-  const [isLoadingTransactions, setIsLoadingTransactions] = React.useState(true);
+  const [transactionError, setTransactionError] = React.useState<string | null>(
+    null
+  );
+  const [transactions, setTransactions] = React.useState<
+    Array<{
+      id: string;
+      wallet_address: string;
+      amount: number;
+      transaction_type: string;
+      status: string;
+      signature: string;
+      created_at: string;
+      updated_at: string;
+      fee: number | null;
+      notes: string | null;
+      error_message: string | null;
+    }>
+  >([]);
+  const [isLoadingTransactions, setIsLoadingTransactions] =
+    React.useState(true);
+
+  // Add these new states
+  const [bettingHistory, setBettingHistory] = React.useState<BettingHistory[]>(
+    []
+  );
+  const [isLoadingBets, setIsLoadingBets] = React.useState(true);
+
+ 
+  const [stats, setStats] = React.useState({
+    totalWagered: 0,
+    totalBets: 0,
+    averageWager: 0,
+  });
 
   React.useEffect(() => {
     const fetchProfile = async () => {
@@ -148,7 +186,9 @@ export function Profile({ onPageChange }: ProfileProps) {
         if (!authToken) throw new Error("No auth token found");
 
         const response = await fetch(
-          `${import.meta.env.VITE_BACKEND_URI}/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
+          `${
+            import.meta.env.VITE_BACKEND_URI
+          }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
           {
             headers: {
               Authorization: `Bearer ${authToken}`,
@@ -161,7 +201,9 @@ export function Profile({ onPageChange }: ProfileProps) {
 
         const data = await response.json();
         console.log("data", data.transactions);
-        setTransactions(data.length > 10 ? data.slice(0, 10) : data.transactions);
+        setTransactions(
+          data.length > 10 ? data.slice(0, 10) : data.transactions
+        );
         console.log("transactions", transactions);
       } catch (error) {
         console.error("Error fetching transactions:", error);
@@ -172,6 +214,50 @@ export function Profile({ onPageChange }: ProfileProps) {
 
     fetchTransactions();
   }, []);
+
+  // Update the useEffect that fetches betting history
+  React.useEffect(() => {
+    const fetchBettingHistory = async () => {
+      try {
+        const authToken = localStorage.getItem("authToken");
+        if (!authToken) throw new Error("No auth token found");
+
+        const response = await fetch(
+          `${
+            import.meta.env.VITE_BACKEND_URI
+          }/api/transactions/game-history?wallet_address=${publicKey?.toBase58()}`,
+          {
+            headers: {
+              Authorization: `Bearer ${authToken}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!response.ok) throw new Error("Failed to fetch betting history");
+
+        const data: GameHistoryResponse = await response.json();
+        setBettingHistory(
+          data.transactions.length > 10
+            ? data.transactions.slice(0, 10)
+            : data.transactions
+        );
+
+        // Update stats in the grid cards
+        setStats({
+          totalWagered: data.user_stats.total_wag,
+          totalBets: data.user_stats.total_bets,
+          averageWager: data.user_stats.total_wag / data.user_stats.total_bets,
+        });
+      } catch (error) {
+        console.error("Error fetching betting history:", error);
+      } finally {
+        setIsLoadingBets(false);
+      }
+    };
+
+    fetchBettingHistory();
+  }, [publicKey]);
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -263,8 +349,6 @@ export function Profile({ onPageChange }: ProfileProps) {
     setModalProfile((prev) => ({ ...prev, [name]: value }));
   };
 
-  
-
   const handleDepositChange = (value: string) => {
     setDepositAmount(value);
   };
@@ -317,10 +401,10 @@ export function Profile({ onPageChange }: ProfileProps) {
     e.preventDefault();
     setIsTransactionPending(true);
     setTransactionError(null);
-    
+
     try {
       await handleDeposits(Number(depositAmount));
-      
+
       // Fetch updated profile to get new balance
       const authToken = localStorage.getItem("authToken");
       const response = await fetch(
@@ -332,18 +416,20 @@ export function Profile({ onPageChange }: ProfileProps) {
           },
         }
       );
-      
+
       if (!response.ok) throw new Error("Failed to fetch updated balance");
-      
+
       const data = await response.json();
-      setProfile(prev => ({
+      setProfile((prev) => ({
         ...prev,
-        account_balance: data.account_balance
+        account_balance: data.account_balance,
       }));
 
       // Fetch updated transactions
       const txResponse = await fetch(
-        `${import.meta.env.VITE_BACKEND_URI}/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
+        `${
+          import.meta.env.VITE_BACKEND_URI
+        }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
         {
           headers: {
             Authorization: `Bearer ${authToken}`,
@@ -354,7 +440,11 @@ export function Profile({ onPageChange }: ProfileProps) {
 
       if (txResponse.ok) {
         const txData = await txResponse.json();
-        setTransactions(txData.transactions.length > 10 ? txData.transactions.slice(0, 10) : txData.transactions);
+        setTransactions(
+          txData.transactions.length > 10
+            ? txData.transactions.slice(0, 10)
+            : txData.transactions
+        );
       }
 
       setShowSuccess(true);
@@ -365,7 +455,9 @@ export function Profile({ onPageChange }: ProfileProps) {
       }, 2000);
     } catch (error) {
       console.error("Deposit failed:", error);
-      setTransactionError(error instanceof Error ? error.message : "Transaction failed");
+      setTransactionError(
+        error instanceof Error ? error.message : "Transaction failed"
+      );
     } finally {
       setIsTransactionPending(false);
     }
@@ -431,7 +523,7 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <span className="text-sm text-gray-400">Balance</span>
               </div>
               <span className="text-lg font-semibold text-white">
-                {profile.account_balance} SOL
+                {profile.account_balance?.toFixed(2)} SOL
               </span>
             </div>
 
@@ -484,8 +576,12 @@ export function Profile({ onPageChange }: ProfileProps) {
                         <th className="pb-4 font-medium">Type</th>
                         <th className="pb-4 font-medium">Status</th>
                         <th className="pb-4 font-medium">Amount</th>
-                        <th className="pb-4 font-medium hidden sm:table-cell">Date</th>
-                        <th className="pb-4 font-medium hidden md:table-cell">Transaction</th>
+                        <th className="pb-4 font-medium hidden sm:table-cell">
+                          Date
+                        </th>
+                        <th className="pb-4 font-medium hidden md:table-cell">
+                          Transaction
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -494,13 +590,19 @@ export function Profile({ onPageChange }: ProfileProps) {
                           <td colSpan={5} className="py-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
                               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                              <span className="text-gray-400">Loading transactions...</span>
+                              <span className="text-gray-400">
+                                Loading transactions...
+                              </span>
                             </div>
                           </td>
                         </tr>
-                      ) : !Array.isArray(transactions) || transactions.length === 0 ? (
+                      ) : !Array.isArray(transactions) ||
+                        transactions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-20 text-center text-gray-400">
+                          <td
+                            colSpan={5}
+                            className="py-20 text-center text-gray-400"
+                          >
                             No transactions found
                           </td>
                         </tr>
@@ -545,10 +647,13 @@ export function Profile({ onPageChange }: ProfileProps) {
                               </span>
                             </td>
                             <td className="py-4 hidden sm:table-cell text-purple-200">
-                              {new Date(tx.created_at).toLocaleDateString(undefined, {
-                                day: "numeric",
-                                month: "short"
-                              })}
+                              {new Date(tx.created_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                }
+                              )}
                             </td>
                             <td className="py-4 hidden md:table-cell">
                               <a
@@ -557,7 +662,8 @@ export function Profile({ onPageChange }: ProfileProps) {
                                 rel="noopener noreferrer"
                                 className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
                               >
-                                {tx.signature.slice(0, 6)}...{tx.signature.slice(-4)}
+                                {tx.signature.slice(0, 6)}...
+                                {tx.signature.slice(-4)}
                               </a>
                             </td>
                           </tr>
@@ -573,7 +679,7 @@ export function Profile({ onPageChange }: ProfileProps) {
       </div>
 
       {/* Betting Statistics */}
-      <div className="mt-6">
+      <div className="mt-6 space-y-6">
         <div className="bg-[#1A2C38] rounded-2xl p-6 border border-white/10">
           <div className="flex items-center space-x-2 mb-6">
             <Trophy className="w-5 h-5 text-yellow-400" />
@@ -586,7 +692,9 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <span className="text-sm text-gray-400">Total Wagered</span>
                 <Bitcoin className="w-4 h-4 text-yellow-400" />
               </div>
-              <div className="text-2xl font-bold text-white">245.50 SOL</div>
+              <div className="text-2xl font-bold text-white">
+                {stats.totalWagered.toFixed(2)} SOL
+              </div>
               <div className="text-sm text-gray-400 mt-1">Lifetime total</div>
             </div>
 
@@ -595,7 +703,9 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <span className="text-sm text-gray-400">Total Bets</span>
                 <Gamepad2 className="w-4 h-4 text-purple-400" />
               </div>
-              <div className="text-2xl font-bold text-white">1,234</div>
+              <div className="text-2xl font-bold text-white">
+                {stats.totalBets.toLocaleString()}
+              </div>
               <div className="text-sm text-gray-400 mt-1">All-time plays</div>
             </div>
 
@@ -604,8 +714,129 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <span className="text-sm text-gray-400">Average Wager</span>
                 <Calculator className="w-4 h-4 text-green-400" />
               </div>
-              <div className="text-2xl font-bold text-white">0.20 SOL</div>
+              <div className="text-2xl font-bold text-white">
+                {stats.averageWager.toFixed(2)} SOL
+              </div>
               <div className="text-sm text-gray-400 mt-1">Per bet average</div>
+            </div>
+          </div>
+
+          {/* New Betting History Table */}
+          <div className="mt-8">
+            <div className="flex items-center space-x-2 mb-6">
+              <Gamepad2 className="w-5 h-5 text-purple-400" />
+              <h3 className="text-xl font-bold text-white">Recent Bets</h3>
+            </div>
+
+            <div className="relative w-full overflow-x-auto scrollbar-none">
+              <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
+                <table className="w-full">
+                  <thead className="sticky top-0 bg-[#1A2C38] z-10">
+                    <tr className="text-left text-sm text-purple-200">
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Amount
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Payout
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        P/L
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Difficulty
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Date
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-white/5">
+                    {isLoadingBets ? (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center">
+                          <div className="flex items-center justify-center space-x-2">
+                            <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
+                            <span className="text-gray-400">
+                              Loading bets...
+                            </span>
+                          </div>
+                        </td>
+                      </tr>
+                    ) : !bettingHistory.length ? (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-4 py-20 text-center text-gray-400"
+                        >
+                          No betting history found
+                        </td>
+                      </tr>
+                    ) : (
+                      bettingHistory.map((bet) => (
+                        <tr
+                          key={bet.id}
+                          className="text-white hover:bg-white/5 transition-colors"
+                        >
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-yellow-400">
+                              {bet.bet_amount.toFixed(2)} SOL
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={
+                                bet.payout > bet.bet_amount
+                                  ? "text-green-400"
+                                  : "text-red-400"
+                              }
+                            >
+                              {bet.payout.toFixed(2)} SOL
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
+                                bet.payout > bet.bet_amount
+                                  ? "bg-green-500/20 text-green-400"
+                                  : "bg-red-500/20 text-red-400"
+                              }`}
+                            >
+                              {bet.payout > bet.bet_amount ? "+" : ""}
+                              {(bet.payout - bet.bet_amount).toFixed(2)}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
+                                bet.difficulty === "easy"
+                                  ? "bg-green-500/20 text-green-400"
+                                  : bet.difficulty === "medium"
+                                  ? "bg-yellow-500/20 text-yellow-400"
+                                  : "bg-red-500/20 text-red-400"
+                              }`}
+                            >
+                              {bet.difficulty}
+                            </span>
+                          </td>
+                          <td className="px-4 py-4 whitespace-nowrap">
+                            <span className="text-purple-200">
+                              {new Date(bet.created_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
+                            </span>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>
@@ -749,9 +980,7 @@ export function Profile({ onPageChange }: ProfileProps) {
                 <h3 className="text-xl font-bold text-red-500 mt-4 mb-2">
                   Transaction Failed
                 </h3>
-                <p className="text-gray-400 text-center">
-                  {transactionError}
-                </p>
+                <p className="text-gray-400 text-center">{transactionError}</p>
                 <button
                   onClick={() => setTransactionError(null)}
                   className="mt-4 px-6 py-2 rounded-lg bg-[#2A3C48] hover:bg-[#374857] border border-white/10 transition-all font-medium text-white"
