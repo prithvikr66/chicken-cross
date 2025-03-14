@@ -5,7 +5,6 @@ import LeftRightBg from "../assets/left_right_road.png";
 import RoadUI from "./RoadUI";
 import CockUi from "./CockUi";
 import CarUi from "./CarUi";
-import axios from "axios";
 interface GameUIProps {
   betAmount: number;
   difficulty: "easy" | "medium" | "hard" | "daredevil";
