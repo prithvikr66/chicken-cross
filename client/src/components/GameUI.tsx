@@ -5,7 +5,7 @@ import LeftRightBg from "../assets/left_right_road.png";
 import RoadUI from "./RoadUI";
 import CockUi from "./CockUi";
 import CarUi from "./CarUi";
-
+import axios from "axios";
 interface GameUIProps {
   betAmount: number;
   difficulty: "easy" | "medium" | "hard" | "daredevil";
@@ -14,6 +14,8 @@ interface GameUIProps {
   encryptedCrashLane: number | undefined;
   nonce: string;
   gameActive: boolean;
+  currentLane: any;
+  setCurrentLane: any;
   onGameEnd: (cashOutLane?: number) => void;
 }
 
@@ -23,12 +25,13 @@ const GameUI: React.FC<GameUIProps> = ({
   multipliers,
   encryptedCrashLane,
   gameActive,
+  currentLane,
+  setCurrentLane,
   onGameEnd,
 }) => {
   const roadWidth = 155;
 
   // We track the hen's lane states
-  const [currentLane, setCurrentLane] = useState<number>(0);
   const [targetLane, setTargetLane] = useState<number | null>(null);
 
   // Crash logic
@@ -111,8 +114,8 @@ const GameUI: React.FC<GameUIProps> = ({
   };
 
   // Crash Car fully exits => reload or something
-  const handleCrashComplete = () => {
-    window.location.reload();
+  const handleCrashComplete = async() => {
+  onGameEnd(currentLane)
   };
 
   return (

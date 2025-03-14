@@ -4,6 +4,7 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
+import { error } from "console";
 const supabase = createClient(
   process.env.SUPABASE_PROJECT_KEY,
   process.env.SUPABASE_ANON_KEY
@@ -181,12 +182,6 @@ router.post("/create", async (req, res) => {
       }
     }
 
-    await supabase
-      .from("seed_pairs")
-      .update({ is_active: false, retired_at: new Date().toISOString() })
-      .eq("wallet_address", walletAddress)
-      .eq("is_active", true);
-
     const { data, error } = await supabase
       .from("seed_pairs")
       .insert({
@@ -251,6 +246,7 @@ router.get("/active", async (req, res) => {
 });
 
 router.post("/retire", async (req, res) => {
+  console.log('retire called')
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 
@@ -295,21 +291,21 @@ router.post("/retire", async (req, res) => {
 
       if (logError) throw logError;
 
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .select("account_balance")
-        .eq("wallet_address", walletAddress)
-        .single();
+      // const { data: userData, error: userError } = await supabase
+      //   .from("users")
+      //   .select("account_balance")
+      //   .eq("wallet_address", walletAddress)
+      //   .single();
 
-      if (userError) throw userError;
+      // if (userError) throw userError;
 
-      const newBalance = (userData.account_balance || 0) - betAmount + payout;
-      const { error: balanceError } = await supabase
-        .from("users")
-        .update({ account_balance: newBalance })
-        .eq("wallet_address", walletAddress);
+      // const newBalance = (userData.account_balance || 0) - betAmount + payout;
+      // const { error: balanceError } = await supabase
+      //   .from("users")
+      //   .update({ account_balance: newBalance })
+      //   .eq("wallet_address", walletAddress);
 
-      if (balanceError) throw balanceError;
+      // if (balanceError) throw balanceError;
     }
 
     const newNonce = seedPair.nonce + 1;
@@ -348,6 +344,93 @@ router.post("/retire", async (req, res) => {
   } catch (error) {
     console.error("Retire seed pair error:", error);
     res.status(500).json({ error: "Failed to retire seed pair" });
+  }
+});
+
+router.post("/gamestart", async (req, res) => {
+  const { betAmount } = req.body;
+  const { walletAddress } = req;
+
+  if (!betAmount || betAmount <= 0) {
+    return res.status(400).json({ error: "Invalid bet amount" });
+  }
+
+  try {
+    // Fetch user balance
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("account_balance, total_wag, total_bets")
+      .eq("wallet_address", walletAddress)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (userData.account_balance < betAmount) {
+      return res.status(400).json({ error: "Insufficient balance" });
+    }
+    const newBalance = userData.account_balance - betAmount;
+    const newTotalWagered = Number(userData.total_wag) + Number(betAmount);
+    const newTotalBets = userData.total_bets + 1;
+
+
+    // Deduct balance
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        account_balance: newBalance,
+        total_wag: newTotalWagered,
+        total_bets: newTotalBets,
+      })
+      .eq("wallet_address", walletAddress);
+
+    if (updateError) console.log(updateError);
+
+    res.json({ success: true, newBalance });
+  } catch (error) {
+    console.error("Balance deduction error:", error);
+    res.status(500).json({ error: "Failed to deduct balance" });
+  }
+});
+
+router.post("/gameover", async (req, res) => {
+  const { winnings } = req.body;
+  const { walletAddress } = req;
+  console.log("Game Winnings",winnings)
+  if (!winnings || winnings < 0) {
+    return res.status(400).json({ error: "Invalid winnings amount" });
+  }
+
+  try {
+    // Fetch current balance
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("account_balance, total_won")
+      .eq("wallet_address", walletAddress)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    // Calculate new balance
+    const newBalance = userData.account_balance + Number(winnings);
+    console.log("Current User Balance",userData.account_balance)
+    console.log("User Account Balance",newBalance)
+    const newTotalWon = userData.total_won + Number(winnings);
+
+    // Update balance
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ account_balance: newBalance, total_won: newTotalWon })
+      .eq("wallet_address", walletAddress);
+
+    if (updateError) console.log(updateError);
+
+    res.json({ success: true, newBalance });
+  } catch (error) {
+    console.error("Balance update error:", error);
+    res.status(500).json({ error: "Failed to update balance" });
   }
 });
 

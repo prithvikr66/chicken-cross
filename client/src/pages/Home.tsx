@@ -4,14 +4,16 @@ import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
+import { resolve } from "path";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
+  navigateToProfileWithModal:any
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
 
-export function Home({ onPageChange }: HomeProps) {
+export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -46,6 +48,8 @@ export function Home({ onPageChange }: HomeProps) {
 
   // ephemeral key pair
   const [keyPair, setKeyPair] = useState<nacl.BoxKeyPair | null>(null);
+    const [currentLane, setCurrentLane] = useState<number>(0);
+  
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
@@ -172,12 +176,20 @@ export function Home({ onPageChange }: HomeProps) {
   // -------------------------------------------------------------------------
   // (C) Start Game => only do this once we have a valid seed pair
   // -------------------------------------------------------------------------
-  const handleStartGame = () => {
+  const handleStartGame = async() => {
     if (!seedPairId) {
       setError("No seed pair available. Please adjust bet/difficulty first.");
       return;
     }
     setGameActive(true);
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    const response = await axios.post(
+      `${API_URL}/api/seeds/gamestart`,
+      { betAmount: betAmount },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    setBalance(response.data.newBalance)
     setError("");
   };
 
@@ -196,13 +208,18 @@ export function Home({ onPageChange }: HomeProps) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      
+      window.location.reload();
+
       // update balance if bet > 0
       if (parseFloat(betAmount) > 0) {
-        setBalance((prev) =>
-          prev !== null
-            ? prev - parseFloat(betAmount) + response.data.payout
-            : null
+        const endgame = await axios.post(
+          `${API_URL}/api/seeds/gameover`,
+          {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(2) },
+          { headers: { Authorization: `Bearer ${token}` } }
         );
+
+        setBalance(endgame.data.newBalance)
       }
 
       // reset
@@ -254,7 +271,7 @@ export function Home({ onPageChange }: HomeProps) {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1">
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1" onClick={navigateToProfileWithModal}>
                 <Plus className="w-4 h-4" />
                 <span>Deposit</span>
               </button>
@@ -332,6 +349,8 @@ export function Home({ onPageChange }: HomeProps) {
                   nonce={nonce}
                   gameActive={gameActive}
                   onGameEnd={handleEndGame}
+                  currentLane={currentLane}
+                  setCurrentLane={setCurrentLane}
                 />
               </div>
 
