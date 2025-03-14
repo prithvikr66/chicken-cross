@@ -4,7 +4,6 @@ import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
-import { resolve } from "path";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -281,7 +280,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance} SOL` : "Loading..."}
+                    {balance !== null ? `${balance.toFixed(2)} SOL` : "Loading..."}
                   </span>
                 </div>
               </div>

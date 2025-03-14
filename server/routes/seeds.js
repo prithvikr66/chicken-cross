@@ -246,7 +246,6 @@ router.get("/active", async (req, res) => {
 });
 
 router.post("/retire", async (req, res) => {
-  console.log('retire called')
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 
@@ -395,42 +394,77 @@ router.post("/gamestart", async (req, res) => {
 });
 
 router.post("/gameover", async (req, res) => {
+  console.log("🚀 [START] /gameover endpoint hit");
+  console.log("📝 Request body:", JSON.stringify(req.body));
+  
   const { winnings } = req.body;
   const { walletAddress } = req;
-  console.log("Game Winnings",winnings)
+  
+  console.log("💰 Game Winnings:", winnings);
+  console.log("👛 Wallet Address:", walletAddress);
+  
+  // Validate winnings
   if (!winnings || winnings < 0) {
+    console.log("❌ [ERROR] Invalid winnings amount:", winnings);
     return res.status(400).json({ error: "Invalid winnings amount" });
   }
-
+  
+  console.log("✅ Winnings validation passed");
+  
   try {
+    console.log("🔍 [DB] Fetching current user data from Supabase");
+    
     // Fetch current balance
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("account_balance, total_won")
       .eq("wallet_address", walletAddress)
       .single();
-
-    if (userError || !userData) {
+    
+    if (userError) {
+      console.log("❌ [DB ERROR] Error fetching user data:", userError);
       return res.status(404).json({ error: "User not found" });
     }
+    
+    if (!userData) {
+      console.log("❌ [DATA ERROR] No user data found for wallet:", walletAddress);
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    console.log("✅ [DB] User data retrieved successfully:", JSON.stringify(userData));
+    
     // Calculate new balance
     const newBalance = userData.account_balance + Number(winnings);
-    console.log("Current User Balance",userData.account_balance)
-    console.log("User Account Balance",newBalance)
     const newTotalWon = userData.total_won + Number(winnings);
-
+    
+    console.log("💼 Current User Balance:", userData.account_balance);
+    console.log("💼 New User Balance:", newBalance);
+    console.log("🏆 New Total Won:", newTotalWon);
+    
+    console.log("✏️ [DB] Updating user balance in Supabase");
+    
     // Update balance
     const { error: updateError } = await supabase
       .from("users")
       .update({ account_balance: newBalance, total_won: newTotalWon })
       .eq("wallet_address", walletAddress);
-
-    if (updateError) console.log(updateError);
-
-    res.json({ success: true, newBalance });
+    
+    if (updateError) {
+      console.log("❌ [DB ERROR] Error updating user balance:", updateError);
+      return res.status(500).json({ error: "Failed to update balance" });
+    }
+    
+    console.log("✅ [DB] User balance updated successfully");
+    console.log("✅ [END] /gameover endpoint completed successfully");
+    
+    // Set content type explicitly
+    res.setHeader('Content-Type', 'application/json');
+    return res.json({ success: true, newBalance });
   } catch (error) {
-    console.error("Balance update error:", error);
-    res.status(500).json({ error: "Failed to update balance" });
+    console.error("❌ [CRITICAL ERROR] Balance update error:", error);
+    return res.status(500).json({ error: "Failed to update balance" });
+  } finally {
+    console.log("🏁 [FINAL] /gameover endpoint execution completed");
   }
 });
 
