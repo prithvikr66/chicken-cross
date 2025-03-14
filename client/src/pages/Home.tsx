@@ -213,7 +213,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       // update balance if bet > 0
       if (parseFloat(betAmount) > 0) {
         const endgame = await axios.post(
-          `${API_URL}/api/seeds/gameover`,
+          `${API_URL}/api/seeds/game-complete`,
           {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(2) },
           { headers: { Authorization: `Bearer ${token}` } }
         );

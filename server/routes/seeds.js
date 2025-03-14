@@ -393,7 +393,7 @@ router.post("/gamestart", async (req, res) => {
   }
 });
 
-router.post("/gameover", async (req, res) => {
+router.post("/game-complete", async (req, res) => {
   console.log("🚀 [START] /gameover endpoint hit");
   console.log("📝 Request body:", JSON.stringify(req.body));
   
@@ -408,7 +408,7 @@ router.post("/gameover", async (req, res) => {
     console.log("❌ [ERROR] Invalid winnings amount:", winnings);
     return res.status(400).json({ error: "Invalid winnings amount" });
   }
-  
+
   console.log("✅ Winnings validation passed");
   
   try {
