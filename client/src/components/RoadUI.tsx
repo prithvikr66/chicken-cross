@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import  { useState } from "react";
 import CoinImg from "../assets/road_coin.svg";
 import wallImg from "../assets/roadblock_wall.svg";
 import "./RoadUi.css";
@@ -8,6 +8,7 @@ interface RoadUIProps {
   value: number;
   gameActive: boolean;
   currentLane: number;
+  multipliers: number[];
   onLaneClick: (laneIndex: number) => void;
   hideWall?: boolean;
 }
@@ -16,6 +17,7 @@ function RoadUI({
   laneIndex,
   value,
   currentLane,
+  multipliers,
   gameActive,
   onLaneClick,
   hideWall,
@@ -37,7 +39,7 @@ function RoadUI({
     // In RoadUI.tsx, maintain the ID structure
     <div
       id={`lane-${laneIndex}`} // Keep this ID format
-      className="bg-[#313464] border-r-4 border-dashed border-white flex justify-center items-center h-full hover:bg-[#3b3e70] cursor-pointer"
+      className={`  ${ laneIndex === multipliers.length  ? "" : " border-r-4 "}  bg-[#313464] border-dashed border-white flex justify-center items-center h-full hover:bg-[#3b3e70] cursor-pointer`}
       style={{ minWidth: "155px" }}
       onClick={handleClick}
     >

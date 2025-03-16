@@ -5,6 +5,7 @@ import LeftRightBg from "../assets/left_right_road.png";
 import RoadUI from "./RoadUI";
 import CockUi from "./CockUi";
 import CarUi from "./CarUi";
+
 interface GameUIProps {
   betAmount: number;
   difficulty: "easy" | "medium" | "hard" | "daredevil";
@@ -13,8 +14,6 @@ interface GameUIProps {
   encryptedCrashLane: number | undefined;
   nonce: string;
   gameActive: boolean;
-  currentLane: any;
-  setCurrentLane: any;
   onGameEnd: (cashOutLane?: number) => void;
 }
 
@@ -24,13 +23,12 @@ const GameUI: React.FC<GameUIProps> = ({
   multipliers,
   encryptedCrashLane,
   gameActive,
-  currentLane,
-  setCurrentLane,
   onGameEnd,
 }) => {
   const roadWidth = 155;
 
   // We track the hen's lane states
+  const [currentLane, setCurrentLane] = useState<number>(0);
   const [targetLane, setTargetLane] = useState<number | null>(null);
 
   // Crash logic
@@ -113,12 +111,12 @@ const GameUI: React.FC<GameUIProps> = ({
   };
 
   // Crash Car fully exits => reload or something
-  const handleCrashComplete = async() => {
-  onGameEnd(currentLane)
+  const handleCrashComplete = () => {
+    window.location.reload();
   };
 
   return (
-    <div className="lg:m-5 h-[20rem] lg:h-[25rem] w-fit relative">
+    <div className="  h-[20rem] lg:h-[25rem] w-fit relative">
       <div className="h-full flex relative">
         {/* Left BG */}
         <div
@@ -134,7 +132,7 @@ const GameUI: React.FC<GameUIProps> = ({
         {/* Road lanes */}
         <div
           ref={lanesContainerRef}
-          className="flex h-full  overflow-x-auto lanes-container "
+          className="flex h-full  overflow-x-auto lanes-container  "
         >
           {multipliers.map((value, index) => (
             <RoadUI
@@ -142,6 +140,7 @@ const GameUI: React.FC<GameUIProps> = ({
               gameActive={gameActive}
               laneIndex={index + 1}
               value={value}
+              multipliers={multipliers}
               currentLane={currentLane}
               onLaneClick={handleLaneClick}
               hideWall={crashLane === index + 1}

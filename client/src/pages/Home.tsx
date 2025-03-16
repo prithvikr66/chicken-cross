@@ -4,16 +4,14 @@ import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
-import GameHistory from "../components/GameHistory";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
-  navigateToProfileWithModal:any
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
 
-export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
+export function Home({ onPageChange }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -43,13 +41,11 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   >(undefined);
   const [nonce, setNonce] = useState<string>("");
 
-  // The game only becomes "active" after user clicks "Start Game"
+  // The game only becomes “active” after user clicks “Start Game”
   const [gameActive, setGameActive] = useState(false);
 
   // ephemeral key pair
   const [keyPair, setKeyPair] = useState<nacl.BoxKeyPair | null>(null);
-    const [currentLane, setCurrentLane] = useState<number>(0);
-  
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
@@ -64,7 +60,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   // Show an initial loading spinner for user data
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // NEW state => track if we're currently calling /create so we can disable "Start Game"
+  // NEW state => track if we’re currently calling /create so we can disable "Start Game"
   const [isCreating, setIsCreating] = useState(false);
 
   // -------------------------------------------------------------------------
@@ -134,7 +130,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       return;
     }
 
-    // We'll create a seed pair in "idle" mode, not setting gameActive yet
+    // We'll create a seed pair in “idle” mode, not setting gameActive yet
     const timer = setTimeout(async () => {
       setIsCreating(true); // disable Start Game while we fetch
       try {
@@ -175,20 +171,12 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   // -------------------------------------------------------------------------
   // (C) Start Game => only do this once we have a valid seed pair
   // -------------------------------------------------------------------------
-  const handleStartGame = async() => {
+  const handleStartGame = () => {
     if (!seedPairId) {
       setError("No seed pair available. Please adjust bet/difficulty first.");
       return;
     }
     setGameActive(true);
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    const response = await axios.post(
-      `${API_URL}/api/seeds/gamestart`,
-      { betAmount: betAmount },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setBalance(response.data.newBalance)
     setError("");
   };
 
@@ -206,15 +194,14 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
         { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       // update balance if bet > 0
       if (parseFloat(betAmount) > 0) {
-        const endgame = await axios.post(
-          `${API_URL}/api/seeds/game-complete`,
-          {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(3) },
-          { headers: { Authorization: `Bearer ${token}` } }
+        setBalance((prev) =>
+          prev !== null
+            ? prev - parseFloat(betAmount) + response.data.payout
+            : null
         );
-        console.log(endgame.data)
-        setBalance(endgame.data.newBalance)
       }
 
       // reset
@@ -225,8 +212,6 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       setEncryptedCrashLane(undefined);
       setNonce("");
       setKeyPair(null);
-      window.location.reload();
-
     } catch (err: any) {
       setError(
         "Failed to end game: " + (err.response?.data?.error || err.message)
@@ -244,14 +229,14 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   };
   const handleQuickBet = (multiplier: number) => {
     const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(3));
+    setBetAmount((currentValue * multiplier).toFixed(2));
   };
 
   return (
-    <div className="min-h-screen bg-[#0F1923] text-white">
+    <div className="min-h-screen flex flex-col bg-black text-white">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-[#1A2C38]/95 backdrop-blur-lg border-b border-white/10 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+      <div className="  bg-[#1A2C38]/95 backdrop-blur-lg border-b border-white/10 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-5 lg:py-3 ">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
               Chicken Cross
@@ -262,13 +247,13 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium">
                     {balance !== null
-                      ? `${balance.toFixed(3)} SOL`
+                      ? `${balance.toFixed(2)} SOL`
                       : "Loading..."}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1" onClick={navigateToProfileWithModal}>
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1">
                 <Plus className="w-4 h-4" />
                 <span>Deposit</span>
               </button>
@@ -278,7 +263,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
+                    {balance !== null ? `${balance} SOL` : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -326,17 +311,17 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       </div>
 
       {/* Main content */}
-      <div className="pt-20 pb-12 px-4">
-        <div className="max-w-7xl mx-auto">
+      <div className="  lg:pt-10 ">
+        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
           {initialLoading ? (
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-              <p className="mt-2 text-gray-400">Loading initial data...</p>
+            <div className="  w-full min-h-[40rem] flex justify-center items-center ">
+              <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
+              {/* <p className="mt-2 text-gray-400">Loading initial data...</p> */}
             </div>
           ) : (
             <>
               {/* The actual game UI */}
-              <div className="border border-white rounded-2xl overflow-x-auto mb-6">
+              <div className="lg:rounded-xl overflow-x-auto">
                 <GameUI
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
@@ -346,13 +331,35 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   nonce={nonce}
                   gameActive={gameActive}
                   onGameEnd={handleEndGame}
-                  currentLane={currentLane}
-                  setCurrentLane={setCurrentLane}
                 />
               </div>
 
               {/* Bet & Difficulty */}
-              <div className="mb-6 bg-[#1A2C38] rounded-2xl p-6 backdrop-blur-lg border border-white/10">
+              <div className="mt-5 bg-[#1A2C38]  rounded-2xl p-6 backdrop-blur-lg  border-white/10">
+              <div className="lg:hidden  mt-2">
+                  <div className="text-center mb-2">
+                    <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
+                      Betting 0 SOL enters demo mode
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleStartGame}
+                    disabled={gameActive || isCreating}
+                    className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
+                      ${
+                        gameActive || isCreating
+                          ? "bg-gray-600 text-gray-300 cursor-not-allowed"
+                          : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
+                      }`}
+                  >
+                    {isCreating ? "Start Game" : "Start Game"}
+                  </button>
+                  <p className="text-center text-sm text-gray-400 mt-2">
+                    {parseFloat(betAmount) === 0
+                      ? "Demo Mode"
+                      : `Playing on ${difficulty} mode`}
+                  </p>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {/* Bet */}
                   <div className="space-y-2">
@@ -444,37 +451,11 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   </div>
                 </div>
                 {/* Mobile Start Button */}
-                <div className="lg:hidden mt-6">
-                  <div className="text-center mb-2">
-                    <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
-                      Betting 0 SOL enters demo mode
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleStartGame}
-                    disabled={gameActive || isCreating}
-                    className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
-                      ${
-                        gameActive || isCreating
-                          ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                          : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
-                      }`}
-                  >
-                    {isCreating ? "Start Game" : "Start Game"}
-                  </button>
-                  <p className="text-center text-sm text-gray-400 mt-2">
-                    {parseFloat(betAmount) === 0
-                      ? "Demo Mode"
-                      : `Playing on ${difficulty} mode`}
-                  </p>
-                </div>
+              
                 {error && (
                   <p className="text-red-400 text-center mt-4">{error}</p>
                 )}
               </div>
-
-              {/* Game History section */}
-              <GameHistory apiUrl={API_URL} />
             </>
           )}
         </div>
