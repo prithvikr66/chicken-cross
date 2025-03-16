@@ -4,7 +4,6 @@ import crypto from "crypto";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
-import { error } from "console";
 const supabase = createClient(
   process.env.SUPABASE_PROJECT_KEY,
   process.env.SUPABASE_ANON_KEY
@@ -76,13 +75,14 @@ async function determineCrashLane(outcome, difficulty) {
     daredevil: 5,
   };
   const laneCount = laneCounts[difficulty] || 6;
-
   const baseWeights = {
-    easy: [0.3, 0.25, 0.2, 0.15, 0.05, 0.05],
-    medium: [0.35, 0.25, 0.2, 0.1, 0.05, 0.05],
-    hard: [0.4, 0.25, 0.15, 0.1, 0.05, 0.05],
-    daredevil: [0.5, 0.25, 0.15, 0.05, 0.05],
+    easy: [0.25, 0.2, 0.15, 0.1, 0.08, 0.07, 0.05, 0.05, 0.025, 0.025],
+    medium: [0.3, 0.22, 0.15, 0.1, 0.08, 0.05, 0.04, 0.03, 0.02, 0.01],
+    hard: [0.3, 0.2, 0.15, 0.1, 0.075, 0.05, 0.05, 0.05, 0.025, 0.025],
+    daredevil: [0.45, 0.2, 0.1, 0.05, 0.05, 0.05, 0.025, 0.025, 0.025, 0.025]
   };
+  
+  
   let weights = baseWeights[difficulty] || baseWeights.easy;
 
   const profitLossRatio = await getHouseProfitLossRatio();
@@ -104,11 +104,12 @@ async function determineCrashLane(outcome, difficulty) {
 
 async function getMultipliers(difficulty) {
   const baseMultipliers = {
-    easy: [1.0, 1.02, 1.05, 1.08, 1.12, 1.15],
-    medium: [1.05, 1.15, 1.3, 1.5, 1.75, 2.0],
-    hard: [1.1, 1.25, 1.5, 1.8, 2.2, 2.7],
-    daredevil: [1.2, 1.5, 2.0, 2.8, 4.0],
+    easy: [1.0, 1.02, 1.05, 1.08, 1.12, 1.15, 1.18, 1.22, 1.26, 1.3],
+    medium: [1.05, 1.15, 1.3, 1.5, 1.75, 2.0, 2.3, 2.6, 3.0, 3.5],
+    hard: [1.1, 1.25, 1.5, 1.8, 2.2, 2.7, 3.3, 4.0, 4.8, 5.7],
+    daredevil: [1.2, 1.5, 2.0, 2.8, 4.0, 5.5, 7.5, 10.0, 13.0, 17.0]
   };
+  
   let multipliers = baseMultipliers[difficulty] || baseMultipliers.easy;
 
   const profitLossRatio = await getHouseProfitLossRatio();
@@ -181,6 +182,12 @@ router.post("/create", async (req, res) => {
         return res.status(400).json({ error: "Insufficient balance" });
       }
     }
+
+    await supabase
+      .from("seed_pairs")
+      .update({ is_active: false, retired_at: new Date().toISOString() })
+      .eq("wallet_address", walletAddress)
+      .eq("is_active", true);
 
     const { data, error } = await supabase
       .from("seed_pairs")
@@ -290,21 +297,21 @@ router.post("/retire", async (req, res) => {
 
       if (logError) throw logError;
 
-      // const { data: userData, error: userError } = await supabase
-      //   .from("users")
-      //   .select("account_balance")
-      //   .eq("wallet_address", walletAddress)
-      //   .single();
+      const { data: userData, error: userError } = await supabase
+        .from("users")
+        .select("account_balance")
+        .eq("wallet_address", walletAddress)
+        .single();
 
-      // if (userError) throw userError;
+      if (userError) throw userError;
 
-      // const newBalance = (userData.account_balance || 0) - betAmount + payout;
-      // const { error: balanceError } = await supabase
-      //   .from("users")
-      //   .update({ account_balance: newBalance })
-      //   .eq("wallet_address", walletAddress);
+      const newBalance = (userData.account_balance || 0) - betAmount + payout;
+      const { error: balanceError } = await supabase
+        .from("users")
+        .update({ account_balance: newBalance })
+        .eq("wallet_address", walletAddress);
 
-      // if (balanceError) throw balanceError;
+      if (balanceError) throw balanceError;
     }
 
     const newNonce = seedPair.nonce + 1;
@@ -343,128 +350,6 @@ router.post("/retire", async (req, res) => {
   } catch (error) {
     console.error("Retire seed pair error:", error);
     res.status(500).json({ error: "Failed to retire seed pair" });
-  }
-});
-
-router.post("/gamestart", async (req, res) => {
-  const { betAmount } = req.body;
-  const { walletAddress } = req;
-
-  if (!betAmount || betAmount <= 0) {
-    return res.status(400).json({ error: "Invalid bet amount" });
-  }
-
-  try {
-    // Fetch user balance
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("account_balance, total_wag, total_bets")
-      .eq("wallet_address", walletAddress)
-      .single();
-
-    if (userError || !userData) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    if (userData.account_balance < betAmount) {
-      return res.status(400).json({ error: "Insufficient balance" });
-    }
-    const newBalance = userData.account_balance - betAmount;
-    const newTotalWagered = Number(userData.total_wag) + Number(betAmount);
-    const newTotalBets = userData.total_bets + 1;
-
-
-    // Deduct balance
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({
-        account_balance: newBalance,
-        total_wag: newTotalWagered,
-        total_bets: newTotalBets,
-      })
-      .eq("wallet_address", walletAddress);
-
-    if (updateError) console.log(updateError);
-
-    res.json({ success: true, newBalance });
-  } catch (error) {
-    console.error("Balance deduction error:", error);
-    res.status(500).json({ error: "Failed to deduct balance" });
-  }
-});
-
-router.post("/game-complete", async (req, res) => {
-  console.log("🚀 [START] /gameover endpoint hit");
-  console.log("📝 Request body:", JSON.stringify(req.body));
-  
-  const { winnings } = req.body;
-  const { walletAddress } = req;
-  
-  console.log("💰 Game Winnings:", winnings);
-  console.log("👛 Wallet Address:", walletAddress);
-  
-  // Validate winnings
-  if (!winnings || winnings < 0) {
-    console.log("❌ [ERROR] Invalid winnings amount:", winnings);
-    return res.status(400).json({ error: "Invalid winnings amount" });
-  }
-
-  console.log("✅ Winnings validation passed");
-  
-  try {
-    console.log("🔍 [DB] Fetching current user data from Supabase");
-    
-    // Fetch current balance
-    const { data: userData, error: userError } = await supabase
-      .from("users")
-      .select("account_balance, total_won")
-      .eq("wallet_address", walletAddress)
-      .single();
-    
-    if (userError) {
-      console.log("❌ [DB ERROR] Error fetching user data:", userError);
-      return res.status(404).json({ error: "User not found" });
-    }
-    
-    if (!userData) {
-      console.log("❌ [DATA ERROR] No user data found for wallet:", walletAddress);
-      return res.status(404).json({ error: "User not found" });
-    }
-    
-    console.log("✅ [DB] User data retrieved successfully:", JSON.stringify(userData));
-    
-    // Calculate new balance
-    const newBalance = userData.account_balance + Number(winnings);
-    const newTotalWon = userData.total_won + Number(winnings);
-    
-    console.log("💼 Current User Balance:", userData.account_balance);
-    console.log("💼 New User Balance:", newBalance);
-    console.log("🏆 New Total Won:", newTotalWon);
-    
-    console.log("✏️ [DB] Updating user balance in Supabase");
-    
-    // Update balance
-    const { error: updateError } = await supabase
-      .from("users")
-      .update({ account_balance: newBalance, total_won: newTotalWon })
-      .eq("wallet_address", walletAddress);
-    
-    if (updateError) {
-      console.log("❌ [DB ERROR] Error updating user balance:", updateError);
-      return res.status(500).json({ error: "Failed to update balance" });
-    }
-    
-    console.log("✅ [DB] User balance updated successfully");
-    console.log("✅ [END] /gameover endpoint completed successfully");
-    
-    // Set content type explicitly
-    res.setHeader('Content-Type', 'application/json');
-    return res.json({ success: true, newBalance });
-  } catch (error) {
-    console.error("❌ [CRITICAL ERROR] Balance update error:", error);
-    return res.status(500).json({ error: "Failed to update balance" });
-  } finally {
-    console.log("🏁 [FINAL] /gameover endpoint execution completed");
   }
 });
 
