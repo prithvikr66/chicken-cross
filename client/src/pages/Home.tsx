@@ -4,6 +4,7 @@ import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
+import GameHistory from "../components/GameHistory";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -42,7 +43,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   >(undefined);
   const [nonce, setNonce] = useState<string>("");
 
-  // The game only becomes “active” after user clicks “Start Game”
+  // The game only becomes "active" after user clicks "Start Game"
   const [gameActive, setGameActive] = useState(false);
 
   // ephemeral key pair
@@ -63,7 +64,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   // Show an initial loading spinner for user data
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // NEW state => track if we’re currently calling /create so we can disable "Start Game"
+  // NEW state => track if we're currently calling /create so we can disable "Start Game"
   const [isCreating, setIsCreating] = useState(false);
 
   // -------------------------------------------------------------------------
@@ -133,7 +134,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       return;
     }
 
-    // We'll create a seed pair in “idle” mode, not setting gameActive yet
+    // We'll create a seed pair in "idle" mode, not setting gameActive yet
     const timer = setTimeout(async () => {
       setIsCreating(true); // disable Start Game while we fetch
       try {
@@ -210,7 +211,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       if (parseFloat(betAmount) > 0) {
         const endgame = await axios.post(
           `${API_URL}/api/seeds/game-complete`,
-          {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(2) },
+          {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(3) },
           { headers: { Authorization: `Bearer ${token}` } }
         );
         console.log(endgame.data)
@@ -244,7 +245,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   };
   const handleQuickBet = (multiplier: number) => {
     const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(2));
+    setBetAmount((currentValue * multiplier).toFixed(3));
   };
 
   return (
@@ -262,7 +263,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium">
                     {balance !== null
-                      ? `${balance.toFixed(2)} SOL`
+                      ? `${balance.toFixed(3)} SOL`
                       : "Loading..."}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -278,7 +279,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance.toFixed(2)} SOL` : "Loading..."}
+                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -336,7 +337,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
           ) : (
             <>
               {/* The actual game UI */}
-              <div className="border border-white rounded-2xl overflow-x-auto">
+              <div className="border border-white rounded-2xl overflow-x-auto mb-6">
                 <GameUI
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
@@ -472,6 +473,9 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   <p className="text-red-400 text-center mt-4">{error}</p>
                 )}
               </div>
+
+              {/* Game History section */}
+              <GameHistory apiUrl={API_URL} />
             </>
           )}
         </div>

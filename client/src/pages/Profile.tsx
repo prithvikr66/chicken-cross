@@ -523,7 +523,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                 <span className="text-sm text-gray-400">Balance</span>
               </div>
               <span className="text-lg font-semibold text-white">
-                {profile.account_balance?.toFixed(2)} SOL
+                {profile.account_balance?.toFixed(3)} SOL
               </span>
             </div>
 
@@ -647,13 +647,26 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                               </span>
                             </td>
                             <td className="py-4 hidden sm:table-cell text-purple-200">
-                              {new Date(tx.created_at).toLocaleDateString(
-                                undefined,
-                                {
+                              <span 
+                                className="text-purple-200 cursor-help"
+                                title={new Date(tx.created_at).toLocaleString(undefined, {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                  timeZoneName: 'short'
+                                })}
+                              >
+                                {new Date(tx.created_at).toLocaleDateString(undefined, {
                                   day: "numeric",
                                   month: "short",
-                                }
-                              )}
+                                  hour: "2-digit",
+                                  minute: "2-digit"
+                                })}
+                              </span>
                             </td>
                             <td className="py-4 hidden md:table-cell">
                               <a
@@ -732,7 +745,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
               <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
                 <table className="w-full">
                   <thead className="sticky top-0 bg-[#1A2C38] z-10">
-                    <tr className="text-left text-sm text-purple-200">
+                    <tr className="text-left text-xs uppercase text-purple-200">
                       <th className="px-4 py-4 whitespace-nowrap font-medium">
                         Amount
                       </th>
@@ -807,7 +820,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium ${
                                 bet.difficulty === "easy"
                                   ? "bg-green-500/20 text-green-400"
                                   : bet.difficulty === "medium"
@@ -818,18 +831,43 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                               {bet.difficulty}
                             </span>
                           </td>
-                          <td className="px-4 py-4 whitespace-nowrap">
-                            <span className="text-purple-200">
-                              {new Date(bet.created_at).toLocaleDateString(
-                                undefined,
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
+                          <td className="px-4 py-4 whitespace-nowrap relative group">
+                            <span 
+                              className="text-purple-200 cursor-help"
+                              title={new Date(bet.created_at).toLocaleString(undefined, {
+                                weekday: 'long',
+                                year: 'numeric',
+                                month: 'long',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                timeZoneName: 'short'
+                              })}
+                            >
+                              {new Date(bet.created_at).toLocaleDateString(undefined, {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
                             </span>
+                            {/* Custom Tooltip */}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
+                              <div className="bg-black/90 text-white text-sm px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                                {new Date(bet.created_at).toLocaleString(undefined, {
+                                  weekday: 'long',
+                                  year: 'numeric',
+                                  month: 'long',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  second: '2-digit',
+                                  timeZoneName: 'short'
+                                })}
+                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
+                              </div>
+                            </div>
                           </td>
                         </tr>
                       ))
@@ -1039,7 +1077,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                       </button>
                     </div>
                     <p className="mt-2 text-sm text-gray-400">
-                      Available: {walletBalance.toFixed(4)} SOL
+                      Available: {walletBalance.toFixed(3)} SOL
                     </p>
                   </div>
 
