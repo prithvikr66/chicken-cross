@@ -14,7 +14,7 @@ interface GameUIProps {
   encryptedCrashLane: number | undefined;
   nonce: string;
   gameActive: boolean;
-  onGameEnd: (cashOutLane?: number) => void;
+  onFirstLaneClick?: () => void;
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -23,7 +23,7 @@ const GameUI: React.FC<GameUIProps> = ({
   multipliers,
   encryptedCrashLane,
   gameActive,
-  onGameEnd,
+  onFirstLaneClick,
 }) => {
   const roadWidth = 155;
 
@@ -78,6 +78,11 @@ const GameUI: React.FC<GameUIProps> = ({
   const handleLaneClick = (clickedLaneIndex: number) => {
     if (!gameActive) return;
     setTargetLane(clickedLaneIndex);
+
+    // If the user clicked lane #1, notify Home so it can enable "Cash Out" button
+    if (onFirstLaneClick) {
+      onFirstLaneClick();
+    }
   };
 
   // Update the handleMoveComplete function in GameUI.tsx
@@ -188,19 +193,6 @@ const GameUI: React.FC<GameUIProps> = ({
           />
         </div>
       </div>
-
-      {/* Cash Out Button */}
-      {gameActive && currentLane > 0 && currentLane <= multipliers.length && (
-        <div className="absolute bottom-4 right-4">
-          <button
-            onClick={() => onGameEnd(currentLane)}
-            className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg"
-          >
-            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)}{" "}
-            SOL)
-          </button>
-        </div>
-      )}
     </div>
   );
 };
