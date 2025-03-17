@@ -29,9 +29,9 @@ function getLaneCount(diff: "easy" | "medium" | "hard" | "daredevil") {
 }
 
 const speedMap: Record<"easy" | "medium" | "hard" | "daredevil", number> = {
-  easy: 5000,
-  medium: 2000,
-  hard: 800,
+  easy: 2000,
+  medium: 1000,
+  hard: 600,
   daredevil: 500,
 };
 

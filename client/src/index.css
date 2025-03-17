@@ -2,6 +2,10 @@
 @tailwind components;
 @tailwind utilities;
 
+.gameui::-webkit-scrollbar {
+  display: none;
+}
+
 /* Add this to your global CSS */
 .lanes-container {
   scroll-behavior: smooth;

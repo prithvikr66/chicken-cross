@@ -310,7 +310,7 @@ export function Home({ onPageChange }: HomeProps) {
           ) : (
             <>
               {/* The actual game UI */}
-              <div className="lg:rounded-xl overflow-x-auto">
+              <div className=" gameui lg:rounded-xl overflow-x-auto">
                 <GameUI
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
@@ -319,7 +319,6 @@ export function Home({ onPageChange }: HomeProps) {
                   encryptedCrashLane={encryptedCrashLane}
                   nonce={nonce}
                   gameActive={gameActive}
-                  // pass the callback so we can update the button state after lane #1 is clicked
                   onFirstLaneClick={handleFirstLaneClick}
                 />
               </div>

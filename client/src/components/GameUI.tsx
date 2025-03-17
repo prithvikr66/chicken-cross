@@ -35,7 +35,7 @@ const GameUI: React.FC<GameUIProps> = ({
   const [crashLane, setCrashLane] = useState<number | null>(null);
   const [forceCrashCar, setForceCrashCar] = useState(false);
   const [cockDead, setCockDead] = useState(false);
-
+  const [henExiting, setHenExiting] = useState(false);
   // Ref for the lanes container so we can auto-scroll
   const lanesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -92,6 +92,11 @@ const GameUI: React.FC<GameUIProps> = ({
 
       if (crashLane && targetLane === crashLane) {
         setForceCrashCar(true);
+      } else {
+        // If user is on the last lane & it's not crash => exit screen
+        if (targetLane === multipliers.length && crashLane !== multipliers.length) {
+          setHenExiting(true);
+        }
       }
       setTargetLane(null);
 
@@ -175,6 +180,7 @@ const GameUI: React.FC<GameUIProps> = ({
             crashLane={crashLane}
             gameOver={false}
             cockDead={cockDead}
+            henExiting={henExiting}
           />
         </div>
         {/* Right BG */}
