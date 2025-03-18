@@ -5,6 +5,7 @@ import LeftRightBg from "../assets/left_right_road.png";
 import RoadUI from "./RoadUI";
 import CockUi from "./CockUi";
 import CarUi from "./CarUi";
+
 interface GameUIProps {
   betAmount: number;
   difficulty: "easy" | "medium" | "hard" | "daredevil";
@@ -13,9 +14,7 @@ interface GameUIProps {
   encryptedCrashLane: number | undefined;
   nonce: string;
   gameActive: boolean;
-  currentLane: any;
-  setCurrentLane: any;
-  onGameEnd: (cashOutLane?: number) => void;
+  onFirstLaneClick?: () => void;
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -24,20 +23,19 @@ const GameUI: React.FC<GameUIProps> = ({
   multipliers,
   encryptedCrashLane,
   gameActive,
-  currentLane,
-  setCurrentLane,
-  onGameEnd,
+  onFirstLaneClick,
 }) => {
   const roadWidth = 155;
 
   // We track the hen's lane states
+  const [currentLane, setCurrentLane] = useState<number>(0);
   const [targetLane, setTargetLane] = useState<number | null>(null);
 
   // Crash logic
   const [crashLane, setCrashLane] = useState<number | null>(null);
   const [forceCrashCar, setForceCrashCar] = useState(false);
   const [cockDead, setCockDead] = useState(false);
-
+  const [henExiting, setHenExiting] = useState(false);
   // Ref for the lanes container so we can auto-scroll
   const lanesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -80,6 +78,11 @@ const GameUI: React.FC<GameUIProps> = ({
   const handleLaneClick = (clickedLaneIndex: number) => {
     if (!gameActive) return;
     setTargetLane(clickedLaneIndex);
+
+    // If the user clicked lane #1, notify Home so it can enable "Cash Out" button
+    if (onFirstLaneClick) {
+      onFirstLaneClick();
+    }
   };
 
   // Update the handleMoveComplete function in GameUI.tsx
@@ -89,6 +92,11 @@ const GameUI: React.FC<GameUIProps> = ({
 
       if (crashLane && targetLane === crashLane) {
         setForceCrashCar(true);
+      } else {
+        // If user is on the last lane & it's not crash => exit screen
+        if (targetLane === multipliers.length && crashLane !== multipliers.length) {
+          setHenExiting(true);
+        }
       }
       setTargetLane(null);
 
@@ -113,12 +121,12 @@ const GameUI: React.FC<GameUIProps> = ({
   };
 
   // Crash Car fully exits => reload or something
-  const handleCrashComplete = async() => {
-  onGameEnd(currentLane)
+  const handleCrashComplete = () => {
+    window.location.reload();
   };
 
   return (
-    <div className="lg:m-5 h-[20rem] lg:h-[25rem] w-fit relative">
+    <div className="  h-[20rem] lg:h-[25rem] w-fit relative">
       <div className="h-full flex relative">
         {/* Left BG */}
         <div
@@ -134,7 +142,7 @@ const GameUI: React.FC<GameUIProps> = ({
         {/* Road lanes */}
         <div
           ref={lanesContainerRef}
-          className="flex h-full  overflow-x-auto lanes-container "
+          className="flex h-full  overflow-x-auto lanes-container  "
         >
           {multipliers.map((value, index) => (
             <RoadUI
@@ -142,6 +150,7 @@ const GameUI: React.FC<GameUIProps> = ({
               gameActive={gameActive}
               laneIndex={index + 1}
               value={value}
+              multipliers={multipliers}
               currentLane={currentLane}
               onLaneClick={handleLaneClick}
               hideWall={crashLane === index + 1}
@@ -171,6 +180,7 @@ const GameUI: React.FC<GameUIProps> = ({
             crashLane={crashLane}
             gameOver={false}
             cockDead={cockDead}
+            henExiting={henExiting}
           />
         </div>
         {/* Right BG */}
@@ -189,19 +199,6 @@ const GameUI: React.FC<GameUIProps> = ({
           />
         </div>
       </div>
-
-      {/* Cash Out Button */}
-      {gameActive && currentLane > 0 && currentLane <= multipliers.length && (
-        <div className="absolute bottom-4 right-4">
-          <button
-            onClick={() => onGameEnd(currentLane)}
-            className="bg-green-500 hover:bg-green-600 text-white font-medium px-4 py-2 rounded-lg"
-          >
-            Cash Out ({(betAmount * multipliers[currentLane - 1]).toFixed(2)}{" "}
-            SOL)
-          </button>
-        </div>
-      )}
     </div>
   );
 };

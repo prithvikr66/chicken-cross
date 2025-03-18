@@ -8,16 +8,15 @@ import GameHistory from "../components/GameHistory";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
-  navigateToProfileWithModal:any
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
 
-export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
+export function Home({ onPageChange }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Menu toggle
+  // Menu toggle for the profile dropdown
   const [showProfileMenu, setShowProfileMenu] = useState(false);
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -29,11 +28,10 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ------------------ States for the game logic ------------------
+  // Game logic states
   const [allMultipliers, setAllMultipliers] = useState<{
     [key: string]: number[];
   } | null>(null);
-
   const [seedPairId, setSeedPairId] = useState("");
   const [serverSeedHash, setServerSeedHash] = useState("");
   const [clientSeed, setClientSeed] = useState("");
@@ -43,33 +41,30 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   >(undefined);
   const [nonce, setNonce] = useState<string>("");
 
-  // The game only becomes "active" after user clicks "Start Game"
   const [gameActive, setGameActive] = useState(false);
-
-  // ephemeral key pair
   const [keyPair, setKeyPair] = useState<nacl.BoxKeyPair | null>(null);
-    const [currentLane, setCurrentLane] = useState<number>(0);
-  
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
   const [difficulty, setDifficulty] = useState<
     "easy" | "medium" | "hard" | "daredevil"
   >("easy");
+  const [balance, setBalance] = useState<number | null>(null);
 
   // Error / loading
   const [error, setError] = useState("");
-  const [balance, setBalance] = useState<number | null>(null);
-
-  // Show an initial loading spinner for user data
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // NEW state => track if we're currently calling /create so we can disable "Start Game"
+  // Track if /create is in-flight
   const [isCreating, setIsCreating] = useState(false);
 
-  // -------------------------------------------------------------------------
-  // (A) On mount (or wallet change), fetch user balance & global multipliers
-  // -------------------------------------------------------------------------
+  // NEW: We define a buttonState with 4 possible states
+  // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
+  const [buttonState, setButtonState] = useState<
+    "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
+  >("start_default");
+
+  // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
       setInitialLoading(true);
@@ -86,7 +81,6 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
           setBalance(balanceResponse.data.account_balance || 0);
         }
 
-        // Fetch "all difficulties" multipliers if you want them
         const allResponse = await axios.get(
           `${API_URL}/api/seeds/multipliers`,
           {
@@ -94,7 +88,6 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
           }
         );
         setAllMultipliers(allResponse.data);
-        // By default, set multipliers to our current difficulty
         setMultipliers(allResponse.data[difficulty]);
       } catch (err: any) {
         setError(
@@ -107,23 +100,19 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
     fetchInitialData();
   }, [publicKey]);
 
-  // If difficulty changes & game not active, set local multipliers from allMultipliers
+  // 2) If difficulty changes & no active game, switch multipliers
   useEffect(() => {
     if (!gameActive && allMultipliers) {
       setMultipliers(allMultipliers[difficulty]);
     }
   }, [difficulty, allMultipliers, gameActive]);
 
-  // -------------------------------------------------------------------------
-  // (B) Debounce: On betAmount or difficulty changes => call /seeds/create
-  // but do NOT activate the game until user presses "Start Game"
-  // -------------------------------------------------------------------------
+  // 3) Debounced /seeds/create => idle mode
   useEffect(() => {
-    if (!publicKey) return; // need wallet
+    if (!publicKey) return;
     const token = localStorage.getItem("authToken");
-    if (!token) return; // need auth
+    if (!token) return;
 
-    // parse bet
     const bet = parseFloat(betAmount);
     if (isNaN(bet) || bet < 0) {
       setError("Please enter a valid bet amount.");
@@ -134,9 +123,12 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       return;
     }
 
-    // We'll create a seed pair in "idle" mode, not setting gameActive yet
     const timer = setTimeout(async () => {
-      setIsCreating(true); // disable Start Game while we fetch
+      // We'll disable the button if we are loading
+      setIsCreating(true);
+      // While we are in flight => buttonState => "start_loading"
+      setButtonState("start_loading");
+
       try {
         const randomBytes = new Uint8Array(16);
         window.crypto.getRandomValues(randomBytes);
@@ -159,42 +151,39 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
         setEncryptedCrashLane(response.data.encryptedCrashLane);
         setNonce(response.data.nonce);
         setError("");
+
+        // If successful, and the game is not started, we return to the "start_default" state
+        if (!gameActive) {
+          setButtonState("start_default");
+        }
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
             (err.response?.data?.error || err.message)
         );
+        // Return to default if error
+        setButtonState("start_default");
       } finally {
-        setIsCreating(false); // re-enable Start Game
+        setIsCreating(false);
       }
-    }, 300); // or 600ms debounce
+    }, 300);
 
     return () => clearTimeout(timer);
   }, [betAmount, difficulty, publicKey, balance]);
 
-  // -------------------------------------------------------------------------
-  // (C) Start Game => only do this once we have a valid seed pair
-  // -------------------------------------------------------------------------
-  const handleStartGame = async() => {
+  // (C) Start Game => user clicks => switch to "cashout_disabled"
+  const handleStartGame = () => {
     if (!seedPairId) {
       setError("No seed pair available. Please adjust bet/difficulty first.");
       return;
     }
     setGameActive(true);
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    const response = await axios.post(
-      `${API_URL}/api/seeds/gamestart`,
-      { betAmount: betAmount },
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    setBalance(response.data.newBalance)
     setError("");
+    // Once the user clicks => "Cash Out" with grey bg => disabled
+    setButtonState("cashout_disabled");
   };
 
-  // -------------------------------------------------------------------------
   // (D) End Game => calls /seeds/retire
-  // -------------------------------------------------------------------------
   const handleEndGame = async (cashOutLane?: number) => {
     if (!seedPairId) return;
     const token = localStorage.getItem("authToken");
@@ -206,15 +195,14 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
         { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       // update balance if bet > 0
       if (parseFloat(betAmount) > 0) {
-        const endgame = await axios.post(
-          `${API_URL}/api/seeds/game-complete`,
-          {winnings:(parseFloat(betAmount) * multipliers[currentLane - 1]).toFixed(3) },
-          { headers: { Authorization: `Bearer ${token}` } }
+        setBalance((prev) =>
+          prev !== null
+            ? prev - parseFloat(betAmount) + response.data.payout
+            : null
         );
-        console.log(endgame.data)
-        setBalance(endgame.data.newBalance)
       }
 
       // reset
@@ -225,8 +213,9 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       setEncryptedCrashLane(undefined);
       setNonce("");
       setKeyPair(null);
-      window.location.reload();
 
+      // Return to "Start Game" default
+      setButtonState("start_default");
     } catch (err: any) {
       setError(
         "Failed to end game: " + (err.response?.data?.error || err.message)
@@ -244,14 +233,22 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
   };
   const handleQuickBet = (multiplier: number) => {
     const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(3));
+    setBetAmount((currentValue * multiplier).toFixed(2));
+  };
+
+  // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
+  const handleFirstLaneClick = () => {
+    // Only change if we're in the "cashout_disabled" state
+    if (buttonState === "cashout_disabled") {
+      setButtonState("cashout_enabled");
+    }
   };
 
   return (
-    <div className="min-h-screen bg-[#0F1923] text-white">
+    <div className="min-h-screen flex flex-col bg-black text-white">
       {/* Header */}
-      <div className="fixed top-0 left-0 right-0 bg-[#1A2C38]/95 backdrop-blur-lg border-b border-white/10 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-3">
+      <div className="  bg-[#1A2C38]/95 backdrop-blur-lg border-b border-white/10 z-50">
+        <div className="max-w-7xl mx-auto px-4 py-5 lg:py-3 ">
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
               Chicken Cross
@@ -262,13 +259,13 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium">
                     {balance !== null
-                      ? `${balance.toFixed(3)} SOL`
+                      ? `${balance.toFixed(2)} SOL`
                       : "Loading..."}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1" onClick={navigateToProfileWithModal}>
+              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1">
                 <Plus className="w-4 h-4" />
                 <span>Deposit</span>
               </button>
@@ -278,7 +275,7 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
+                    {balance !== null ? `${balance} SOL` : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -326,17 +323,16 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
       </div>
 
       {/* Main content */}
-      <div className="pt-20 pb-12 px-4">
-        <div className="max-w-7xl mx-auto">
+      <div className="  lg:pt-10 ">
+        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
           {initialLoading ? (
-            <div className="text-center">
-              <div className="inline-block animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
-              <p className="mt-2 text-gray-400">Loading initial data...</p>
+            <div className="  w-full min-h-[40rem] flex justify-center items-center ">
+              <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
             </div>
           ) : (
             <>
               {/* The actual game UI */}
-              <div className="border border-white rounded-2xl overflow-x-auto mb-6">
+              <div className=" gameui lg:rounded-xl overflow-x-auto">
                 <GameUI
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
@@ -345,18 +341,41 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   encryptedCrashLane={encryptedCrashLane}
                   nonce={nonce}
                   gameActive={gameActive}
-                  onGameEnd={handleEndGame}
-                  currentLane={currentLane}
-                  setCurrentLane={setCurrentLane}
+                  onFirstLaneClick={handleFirstLaneClick}
                 />
               </div>
 
               {/* Bet & Difficulty */}
-              <div className="mb-6 bg-[#1A2C38] rounded-2xl p-6 backdrop-blur-lg border border-white/10">
+              <div className="mt-5 bg-[#1A2C38]  rounded-2xl p-6 backdrop-blur-lg  border-white/10">
+                {/* MOBILE Start Button */}
+                <div className="lg:hidden  mt-2">
+                  <div className="text-center mb-2">
+                    <span className="text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full">
+                      Betting 0 SOL enters demo mode
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleStartGame}
+                    disabled={
+                      buttonState === "start_loading" ||
+                      buttonState === "cashout_disabled" ||
+                      buttonState === "cashout_enabled"
+                    }
+                    className={getButtonClasses(buttonState)}
+                  >
+                    {getButtonText(buttonState)}
+                  </button>
+                  <p className="text-center text-sm text-gray-400 mt-2">
+                    {parseFloat(betAmount) === 0
+                      ? "Demo Mode"
+                      : `Playing on ${difficulty} mode`}
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                  {/* Bet */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-purple-200">
+                  {/* Bet Amount Field */}
+                  <div className="space-y-2 ">
+                    <label className="text-sm font-medium text-white">
                       Bet Amount (SOL)
                     </label>
                     <div className="relative">
@@ -364,16 +383,16 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                         type="text"
                         value={betAmount}
                         onChange={(e) => handleBetChange(e.target.value)}
-                        className="w-full bg-[#2A3C48] border border-white/10 rounded-lg px-4 py-3 text-white"
+                        className="w-full bg-[#2A3C48] border border-white/10 rounded-lg px-4 py-2 text-white"
                         placeholder="Enter bet amount (0 for demo)"
-                        disabled={gameActive} // once started, lock bet
+                        disabled={gameActive}
                       />
                       <div className="absolute right-2 top-2 flex space-x-1">
                         <button
                           onClick={() => handleQuickBet(0.5)}
                           className="px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded"
                         >
-                          ½
+                          1/2
                         </button>
                         <button
                           onClick={() => handleQuickBet(2)}
@@ -392,8 +411,8 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                   </div>
 
                   {/* Difficulty */}
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium text-purple-200">
+                  <div className="space-y-2 ">
+                    <label className="text-sm font-medium text-white">
                       Difficulty
                     </label>
                     <div className="grid grid-cols-4 gap-2">
@@ -416,69 +435,93 @@ export function Home({ onPageChange,navigateToProfileWithModal }: HomeProps) {
                     </div>
                   </div>
 
-                  {/* Start Button (desktop) */}
-                  <div className="hidden lg:flex flex-col justify-center mt-4">
+                  {/* DESKTOP Start/CashOut Button */}
+                  <div className="hidden lg:flex flex-col justify-center">
                     <div className="text-center mb-2">
-                      <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
+                      <span className="text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full">
                         Betting 0 SOL enters demo mode
                       </span>
                     </div>
                     <button
                       onClick={handleStartGame}
-                      // disable if game is active OR we're still fetching /create
-                      disabled={gameActive || isCreating}
-                      className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
-                        ${
-                          gameActive || isCreating
-                            ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                            : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
-                        }`}
+                      disabled={
+                        buttonState === "start_loading" ||
+                        buttonState === "cashout_disabled" ||
+                        buttonState === "cashout_enabled"
+                      }
+                      className={getButtonClasses(buttonState)}
                     >
-                      {isCreating ? "Start Game" : "Start Game"}
+                      {getButtonText(buttonState)}
                     </button>
-                    <p className="text-center text-sm text-gray-400 mt-4">
+                    <p className="text-center text-sm text-gray-400 mt-2">
                       {parseFloat(betAmount) === 0
                         ? "Demo Mode"
                         : `Playing on ${difficulty} mode`}
                     </p>
                   </div>
                 </div>
-                {/* Mobile Start Button */}
-                <div className="lg:hidden mt-6">
-                  <div className="text-center mb-2">
-                    <span className="text-sm text-purple-300 bg-purple-500/20 px-3 py-1 rounded-full">
-                      Betting 0 SOL enters demo mode
-                    </span>
-                  </div>
-                  <button
-                    onClick={handleStartGame}
-                    disabled={gameActive || isCreating}
-                    className={`w-full font-bold py-4 px-8 rounded-xl transition-all transform hover:scale-[1.02]
-                      ${
-                        gameActive || isCreating
-                          ? "bg-gray-600 text-gray-300 cursor-not-allowed"
-                          : "bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black"
-                      }`}
-                  >
-                    {isCreating ? "Start Game" : "Start Game"}
-                  </button>
-                  <p className="text-center text-sm text-gray-400 mt-2">
-                    {parseFloat(betAmount) === 0
-                      ? "Demo Mode"
-                      : `Playing on ${difficulty} mode`}
-                  </p>
-                </div>
+
                 {error && (
                   <p className="text-red-400 text-center mt-4">{error}</p>
                 )}
               </div>
-
               {/* Game History section */}
-              <GameHistory apiUrl={API_URL} />
+              <div className=" mt-[5%]">
+                <GameHistory apiUrl={API_URL} />
+              </div>
             </>
           )}
         </div>
       </div>
     </div>
   );
+}
+
+// Helper to define button text given our buttonState
+function getButtonText(
+  state:
+    | "start_default"
+    | "start_loading"
+    | "cashout_disabled"
+    | "cashout_enabled"
+) {
+  switch (state) {
+    case "start_default":
+    case "start_loading":
+      return "Start Game";
+    case "cashout_disabled":
+    case "cashout_enabled":
+      return "Cash Out";
+    default:
+      return "Start Game";
+  }
+}
+
+// Helper to define the classes based on our buttonState
+function getButtonClasses(
+  state:
+    | "start_default"
+    | "start_loading"
+    | "cashout_disabled"
+    | "cashout_enabled"
+) {
+  // Common classes for padding, rounding, etc
+  const base =
+    "w-full font-bold py-2 px-8 rounded-xl transition-all transform hover:scale-[1.02]";
+  switch (state) {
+    case "start_default":
+      // "Start Game" with yellow background, clickable
+      return `${base} bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black`;
+    case "start_loading":
+      // "Start Game" with grey BG, disabled
+      return `${base} bg-gray-600 text-gray-300 cursor-not-allowed`;
+    case "cashout_disabled":
+      // "Cash Out" with grey BG, disabled
+      return `${base} bg-gray-600 text-gray-300 cursor-not-allowed`;
+    case "cashout_enabled":
+      // "Cash Out" with yellow BG, enabled
+      return `${base} bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black`;
+    default:
+      return `${base} bg-gray-600 text-gray-300 cursor-not-allowed`;
+  }
 }

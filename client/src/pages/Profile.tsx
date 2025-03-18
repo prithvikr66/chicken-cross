@@ -110,6 +110,10 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
     averageWager: 0,
   });
 
+  // Add new state for withdrawal processing
+  const [isWithdrawPending, setIsWithdrawPending] = React.useState(false);
+  const [withdrawError, setWithdrawError] = React.useState<string | null>(null);
+
   React.useEffect(() => {
     const fetchProfile = async () => {
       try {
@@ -353,17 +357,64 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
     setDepositAmount(value);
   };
 
-  const handleWithdrawSubmit = (e: React.FormEvent) => {
+  const handleWithdrawSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const amount = parseFloat(withdrawAmount);
-    if (amount > 0 && amount <= 245.5) {
-      // Using mock balance
+    setIsWithdrawPending(true);
+    setWithdrawError(null);
+
+    try {
+      const amount = parseFloat(withdrawAmount);
+      if (!amount || amount <= 0) {
+        throw new Error("Invalid withdrawal amount");
+      }
+
+      const authToken = localStorage.getItem("authToken");
+      if (!authToken) throw new Error("No auth token found");
+
+      const response = await fetch(`${import.meta.env.VITE_BACKEND_URI}/api/transactions/withdraw`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          wallet_address: publicKey?.toBase58(),
+          amount: amount,
+          signature: '',
+          notes: 'Withdrawal request'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to process withdrawal');
+      }
+
+      // Update local profile balance
+      setProfile(prev => ({
+        ...prev,
+        account_balance: prev.account_balance - amount
+      }));
+
+      // Add new transaction to the list
+      setTransactions(prev => [{
+        ...data.transaction[0],
+        created_at: new Date().toISOString()
+      }, ...prev]);
+
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         setShowWithdrawModal(false);
         setWithdrawAmount("");
       }, 2000);
+
+    } catch (error) {
+      console.error('Withdrawal error:', error);
+      setWithdrawError(error instanceof Error ? error.message : 'Transaction failed');
+    } finally {
+      setIsWithdrawPending(false);
     }
   };
 
@@ -706,7 +757,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                 <Bitcoin className="w-4 h-4 text-yellow-400" />
               </div>
               <div className="text-2xl font-bold text-white">
-                {stats.totalWagered.toFixed(2)} SOL
+                {stats.totalWagered.toFixed(3)} SOL
               </div>
               <div className="text-sm text-gray-400 mt-1">Lifetime total</div>
             </div>
@@ -728,7 +779,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                 <Calculator className="w-4 h-4 text-green-400" />
               </div>
               <div className="text-2xl font-bold text-white">
-                {stats.averageWager.toFixed(2)} SOL
+                {stats.averageWager.toFixed(3)} SOL
               </div>
               <div className="text-sm text-gray-400 mt-1">Per bet average</div>
             </div>
@@ -792,7 +843,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                         >
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span className="text-yellow-400">
-                              {bet.bet_amount.toFixed(2)} SOL
+                              {bet.bet_amount.toFixed(3)} SOL
                             </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
@@ -803,7 +854,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                                   : "text-red-400"
                               }
                             >
-                              {bet.payout.toFixed(2)} SOL
+                              {bet.payout.toFixed(3)} SOL
                             </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
@@ -815,7 +866,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                               }`}
                             >
                               {bet.payout > bet.bet_amount ? "+" : ""}
-                              {(bet.payout - bet.bet_amount).toFixed(2)}
+                              {(bet.payout - bet.bet_amount).toFixed(3)}
                             </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
@@ -1126,6 +1177,34 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                   Your funds have been sent to your wallet
                 </p>
               </div>
+            ) : withdrawError ? (
+              <div className="flex flex-col items-center justify-center py-12 animate-fade-in">
+                <div className="w-16 h-16 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="text-xl font-bold text-red-500 mt-4 mb-2">
+                  Withdrawal Failed
+                </h3>
+                <p className="text-gray-400 text-center">{withdrawError}</p>
+                <button
+                  onClick={() => setWithdrawError(null)}
+                  className="mt-4 px-6 py-2 rounded-lg bg-[#2A3C48] hover:bg-[#374857] border border-white/10 transition-all font-medium text-white"
+                >
+                  Try Again
+                </button>
+              </div>
+            ) : isWithdrawPending ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-16 h-16 relative">
+                  <div className="w-16 h-16 rounded-full border-4 border-yellow-500/20 animate-spin border-t-yellow-500"></div>
+                </div>
+                <h3 className="text-xl font-bold text-white mt-4 mb-2">
+                  Processing Withdrawal
+                </h3>
+                <p className="text-gray-400 text-center">
+                  Please wait while we process your withdrawal...
+                </p>
+              </div>
             ) : (
               <>
                 <div className="flex items-center justify-between mb-6">
@@ -1143,7 +1222,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                 <form onSubmit={handleWithdrawSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-gray-400 mb-2">
-                      Amount (Max {profile.account_balance} SOL)
+                      Amount (Max {profile.account_balance.toFixed(3)} SOL)
                     </label>
                     <div className="relative">
                       <input
@@ -1162,7 +1241,7 @@ export function Profile({ onPageChange,showDepositModal,setShowDepositModal }: P
                       </button>
                     </div>
                     <p className="mt-2 text-sm text-gray-400">
-                      Available: {profile.account_balance} SOL
+                      Available: {profile.account_balance.toFixed(3)} SOL
                     </p>
                   </div>
 
