@@ -6,6 +6,7 @@ import { transactionRoutes } from "./routes/transactions.js";
 import { authRoutes } from "./routes/auth.js";
 import { seedRoutes } from "./routes/seeds.js";
 import jwt from "jsonwebtoken";
+import { adminRoutes } from "./routes/admin.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -40,6 +41,7 @@ app.use("/api/user", authenticateUser, userRoutes);
 app.use("/api/games", gameRoutes);
 app.use("/api/transactions", transactionRoutes);
 app.use("/api/auth", authRoutes);
+app.use("/api/admin", adminRoutes);
 app.use("/api/seeds", authenticateUser, seedRoutes);
 
 // Health check endpoint
