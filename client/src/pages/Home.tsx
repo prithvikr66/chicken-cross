@@ -4,6 +4,7 @@ import { UserCircle2, Wallet, ChevronDown, Plus, LogOut } from "lucide-react";
 import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
+import GameHistory from "../components/GameHistory";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -28,12 +29,16 @@ export function Home({ onPageChange }: HomeProps) {
   }, []);
 
   // Game logic states
-  const [allMultipliers, setAllMultipliers] = useState<{ [key: string]: number[] } | null>(null);
+  const [allMultipliers, setAllMultipliers] = useState<{
+    [key: string]: number[];
+  } | null>(null);
   const [seedPairId, setSeedPairId] = useState("");
   const [serverSeedHash, setServerSeedHash] = useState("");
   const [clientSeed, setClientSeed] = useState("");
   const [multipliers, setMultipliers] = useState<number[]>([]);
-  const [encryptedCrashLane, setEncryptedCrashLane] = useState<number | undefined>(undefined);
+  const [encryptedCrashLane, setEncryptedCrashLane] = useState<
+    number | undefined
+  >(undefined);
   const [nonce, setNonce] = useState<string>("");
 
   const [gameActive, setGameActive] = useState(false);
@@ -41,7 +46,9 @@ export function Home({ onPageChange }: HomeProps) {
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
-  const [difficulty, setDifficulty] = useState<"easy" | "medium" | "hard" | "daredevil">("easy");
+  const [difficulty, setDifficulty] = useState<
+    "easy" | "medium" | "hard" | "daredevil"
+  >("easy");
   const [balance, setBalance] = useState<number | null>(null);
 
   // Error / loading
@@ -53,7 +60,9 @@ export function Home({ onPageChange }: HomeProps) {
 
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
-  const [buttonState, setButtonState] = useState<"start_default"|"start_loading"|"cashout_disabled"|"cashout_enabled">("start_default");
+  const [buttonState, setButtonState] = useState<
+    "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
+  >("start_default");
 
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
@@ -63,19 +72,27 @@ export function Home({ onPageChange }: HomeProps) {
 
       try {
         if (token && publicKey) {
-          const balanceResponse = await axios.get(`${API_URL}/api/user/profile`, {
-            headers: { Authorization: `Bearer ${token}` },
-          });
+          const balanceResponse = await axios.get(
+            `${API_URL}/api/user/profile`,
+            {
+              headers: { Authorization: `Bearer ${token}` },
+            }
+          );
           setBalance(balanceResponse.data.account_balance || 0);
         }
 
-        const allResponse = await axios.get(`${API_URL}/api/seeds/multipliers`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const allResponse = await axios.get(
+          `${API_URL}/api/seeds/multipliers`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
         setAllMultipliers(allResponse.data);
         setMultipliers(allResponse.data[difficulty]);
       } catch (err: any) {
-        setError("Failed to load data: " + (err.response?.data?.error || err.message));
+        setError(
+          "Failed to load data: " + (err.response?.data?.error || err.message)
+        );
       } finally {
         setInitialLoading(false);
       }
@@ -140,7 +157,10 @@ export function Home({ onPageChange }: HomeProps) {
           setButtonState("start_default");
         }
       } catch (err: any) {
-        setError("Failed to create seed pair: " + (err.response?.data?.error || err.message));
+        setError(
+          "Failed to create seed pair: " +
+            (err.response?.data?.error || err.message)
+        );
         // Return to default if error
         setButtonState("start_default");
       } finally {
@@ -197,7 +217,9 @@ export function Home({ onPageChange }: HomeProps) {
       // Return to "Start Game" default
       setButtonState("start_default");
     } catch (err: any) {
-      setError("Failed to end game: " + (err.response?.data?.error || err.message));
+      setError(
+        "Failed to end game: " + (err.response?.data?.error || err.message)
+      );
     }
   };
 
@@ -394,20 +416,22 @@ export function Home({ onPageChange }: HomeProps) {
                       Difficulty
                     </label>
                     <div className="grid grid-cols-4 gap-2">
-                      {(["easy", "medium", "hard", "daredevil"] as const).map((level) => (
-                        <button
-                          key={level}
-                          onClick={() => setDifficulty(level)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
-                            difficulty === level
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 text-gray-400 hover:bg-white/10"
-                          }`}
-                          disabled={gameActive}
-                        >
-                          {level}
-                        </button>
-                      ))}
+                      {(["easy", "medium", "hard", "daredevil"] as const).map(
+                        (level) => (
+                          <button
+                            key={level}
+                            onClick={() => setDifficulty(level)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
+                              difficulty === level
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            }`}
+                            disabled={gameActive}
+                          >
+                            {level}
+                          </button>
+                        )
+                      )}
                     </div>
                   </div>
 
@@ -441,6 +465,10 @@ export function Home({ onPageChange }: HomeProps) {
                   <p className="text-red-400 text-center mt-4">{error}</p>
                 )}
               </div>
+              {/* Game History section */}
+              <div className=" mt-[5%]">
+                <GameHistory apiUrl={API_URL} />
+              </div>
             </>
           )}
         </div>
@@ -450,7 +478,13 @@ export function Home({ onPageChange }: HomeProps) {
 }
 
 // Helper to define button text given our buttonState
-function getButtonText(state: "start_default"|"start_loading"|"cashout_disabled"|"cashout_enabled") {
+function getButtonText(
+  state:
+    | "start_default"
+    | "start_loading"
+    | "cashout_disabled"
+    | "cashout_enabled"
+) {
   switch (state) {
     case "start_default":
     case "start_loading":
@@ -464,9 +498,16 @@ function getButtonText(state: "start_default"|"start_loading"|"cashout_disabled"
 }
 
 // Helper to define the classes based on our buttonState
-function getButtonClasses(state: "start_default"|"start_loading"|"cashout_disabled"|"cashout_enabled") {
+function getButtonClasses(
+  state:
+    | "start_default"
+    | "start_loading"
+    | "cashout_disabled"
+    | "cashout_enabled"
+) {
   // Common classes for padding, rounding, etc
-  const base = "w-full font-bold py-2 px-8 rounded-xl transition-all transform hover:scale-[1.02]";
+  const base =
+    "w-full font-bold py-2 px-8 rounded-xl transition-all transform hover:scale-[1.02]";
   switch (state) {
     case "start_default":
       // "Start Game" with yellow background, clickable

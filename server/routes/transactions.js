@@ -168,6 +168,65 @@ router.post("/deposits/verify", async (req, res) => {
   }
 });
 
+router.post("/withdraw", async (req, res) => {
+  const { wallet_address, amount, notes } = req.body;
+
+  if (!wallet_address || !amount || amount <= 0) {
+    return res.status(400).json({ error: "Invalid wallet address or amount" });
+  }
+
+  try {
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("account_balance")
+      .eq("wallet_address", wallet_address)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    const currentBalance = userData.account_balance;
+
+    if (currentBalance < amount) {
+      return res.status(400).json({ error: "Insufficient balance" });
+    }
+
+    const newBalance = currentBalance - amount;
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({ account_balance: newBalance })
+      .eq("wallet_address", wallet_address);
+
+    if (updateError) {
+      console.error("Error updating user balance:", updateError);
+      return res.status(500).json({ error: "Failed to update user balance" });
+    }
+    const { data: transaction, error: transactionError } = await supabase
+      .from("transactions")
+      .insert([
+        {
+          wallet_address,
+          amount: amount,
+          transaction_type: "withdrawal",
+          status: "pending",
+          notes,
+        },
+      ])
+      .select();
+
+    if (transactionError) {
+      console.error("Error creating withdrawal transaction:", transactionError);
+      return res.status(500).json({ error: "Failed to create withdrawal transaction" });
+    }
+
+    res.status(201).json({ success: true, transaction });
+  } catch (err) {
+    console.error("Error in /api/withdraw route:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get('/game-history', async (req, res) => {
   const walletAddress = req.query.wallet_address;
 
