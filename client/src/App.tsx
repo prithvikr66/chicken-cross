@@ -74,7 +74,7 @@ function App() {
 
   return (
     <div className="min-h-screen bg-[#0F1923] text-white">
-      {signedIn && <Header onPageChange={setCurrentPage} />}
+      {/* {signedIn && <Header onPageChange={setCurrentPage} />} */}
       {!signedIn ? (
         <div className="min-h-screen flex flex-col items-center justify-center">
           <div className="max-w-md w-full bg-[#1A2C38] rounded-2xl p-8 space-y-6 border border-white/10 shadow-2xl shadow-purple-500/10">

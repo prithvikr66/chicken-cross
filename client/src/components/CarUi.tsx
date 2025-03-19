@@ -12,7 +12,7 @@ interface CarUiProps {
   forceCrashCar?: boolean;
   crashLane?: number;
   onCrashPass?: () => void;
-  multipliers: [number];
+  multipliers: number[];
   onCrashComplete?: () => void;
 }
 

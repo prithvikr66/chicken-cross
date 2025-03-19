@@ -107,7 +107,7 @@ function CockUi({
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
       <div className="absolute z-20 " style={{
         left: `${position.left}px`,
-        bottom: "80px",
+        bottom: "58px",
         transition: cockDead
           ? "none"
           : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
