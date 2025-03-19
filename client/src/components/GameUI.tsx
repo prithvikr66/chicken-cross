@@ -163,6 +163,7 @@ const GameUI: React.FC<GameUIProps> = ({
             difficulty={difficulty}
             henLane={currentLane}
             roadWidth={roadWidth}
+            multipliers={multipliers}
             forceCrashCar={forceCrashCar}
             crashLane={crashLane ?? undefined}
             onCrashPass={handleCrashPass}
@@ -179,6 +180,7 @@ const GameUI: React.FC<GameUIProps> = ({
             onMoveComplete={handleMoveComplete}
             crashLane={crashLane}
             gameOver={false}
+            multipliers={multipliers}
             cockDead={cockDead}
             henExiting={henExiting}
           />

@@ -149,6 +149,7 @@ export function Home({ onPageChange }: HomeProps) {
         setSeedPairId(response.data.seedPairId);
         setServerSeedHash(response.data.serverSeedHash);
         setEncryptedCrashLane(response.data.encryptedCrashLane);
+        // setEncryptedCrashLane(11);
         setNonce(response.data.nonce);
         setError("");
 
@@ -323,7 +324,7 @@ export function Home({ onPageChange }: HomeProps) {
       </div>
 
       {/* Main content */}
-      <div className="  lg:pt-10 ">
+      <div className=" ">
         <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
           {initialLoading ? (
             <div className="  w-full min-h-[40rem] flex justify-center items-center ">

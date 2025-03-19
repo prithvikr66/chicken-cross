@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import CockImg from "../assets/standing_clock.svg";
 import CockMovingImg1 from "../assets/cock_walk_1.svg";
 import CockMovingImg2 from "../assets/cock_walk_2.svg";
@@ -9,6 +9,7 @@ interface CockUiProps {
   maxHeight: number;
   targetLane: number | null;
   currentLane: number;
+  multipliers: number[];
   onMoveComplete: () => void;
   crashLane: number | null;
   gameOver: boolean;
@@ -21,6 +22,7 @@ interface CockUiProps {
 function CockUi({
   maxWidth,
   maxHeight,
+  multipliers,
   targetLane,
   currentLane,
   onMoveComplete,
@@ -28,6 +30,9 @@ function CockUi({
   cockDead,
   henExiting,
 }: CockUiProps) {
+  // Explicitly define the type of `henRef` to be HTMLImageElement
+  const henRef = useRef<HTMLImageElement | null>(null);
+
   const laneWidth = maxWidth; // 155 from GameUI
   const [position, setPosition] = useState({ left: calculateLanePosition(currentLane) });
   const [isMoving, setIsMoving] = useState(false);
@@ -35,8 +40,8 @@ function CockUi({
 
   function calculateLanePosition(lane: number): number {
     // For example, each lane is laneWidth wide, left offset for lane 1 is some constant
-    const leftBackgroundWidth = 160; 
-    if (lane === 0) return 75; 
+    const leftBackgroundWidth = 160;
+    if (lane === 0) return 75;
     return leftBackgroundWidth + (lane - 1) * laneWidth + laneWidth / 2 - 50;
   }
 
@@ -86,7 +91,8 @@ function CockUi({
     if (henExiting && !cockDead) {
       // e.g. animate further to the right
       setIsMoving(true);
-      setPosition({ left: 2000 }); // some large number to push off screen
+      const newLeft = calculateLanePosition(multipliers.length + 1);
+      setPosition({ left: newLeft }); // some large number to push off screen
 
       // Takes 1s to walk off screen
       const timer = setTimeout(() => {
@@ -99,20 +105,42 @@ function CockUi({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <img
-        src={currentImage}
-        alt="Hen"
-        className="absolute z-20"
-        style={{
-          left: `${position.left}px`,
-          bottom: "100px",
-          width: "85px",
-          height: "85px",
-          transition: cockDead
-            ? "none"
-            : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
-        }}
-      />
+      <div className="absolute z-20 " style={{
+        left: `${position.left}px`,
+        bottom: "80px",
+        transition: cockDead
+          ? "none"
+          : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
+      }}>
+        {/* Hen image */}
+        <img
+          src={currentImage}
+          alt="Hen"
+          className=""
+          style={{
+            width: "85px",
+            height: "85px",
+          }}
+          ref={henRef}
+        />
+
+        {/* Multiplier displayed directly below the hen */}
+        {!cockDead && (
+          currentLane > 0 && multipliers[currentLane] ? (
+            <div className="z-20 text-center bg-[#171C4C] text-white rounded-xl p-2 mt-2">
+              {multipliers[currentLane - 1].toFixed(2)}x
+            </div>
+          ) : (
+            <div
+              className="z-20 text-center text-white rounded-xl p-2 mt-2"
+              style={{ backgroundColor: 'transparent', opacity: 0 }}
+            >
+              x
+            </div>
+          )
+        )}
+
+      </div>
     </div>
   );
 }
