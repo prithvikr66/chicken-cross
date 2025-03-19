@@ -114,7 +114,8 @@ export function Home({ onPageChange }: HomeProps) {
     if (!token) return;
 
     const bet = parseFloat(betAmount);
-    if (isNaN(bet) || bet < 0) {
+    //removed the isNan(bet) to allow empty field
+    if (bet < 0) {
       setError("Please enter a valid bet amount.");
       return;
     }
@@ -149,7 +150,7 @@ export function Home({ onPageChange }: HomeProps) {
         setSeedPairId(response.data.seedPairId);
         setServerSeedHash(response.data.serverSeedHash);
         setEncryptedCrashLane(response.data.encryptedCrashLane);
-        // setEncryptedCrashLane(11);
+        // setEncryptedCrashLane(14);
         setNonce(response.data.nonce);
         setError("");
 
@@ -160,7 +161,7 @@ export function Home({ onPageChange }: HomeProps) {
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
-            (err.response?.data?.error || err.message)
+          (err.response?.data?.error || err.message)
         );
         // Return to default if error
         setButtonState("start_default");
@@ -174,14 +175,19 @@ export function Home({ onPageChange }: HomeProps) {
 
   // (C) Start Game => user clicks => switch to "cashout_disabled"
   const handleStartGame = () => {
-    if (!seedPairId) {
-      setError("No seed pair available. Please adjust bet/difficulty first.");
-      return;
+    if (buttonState === "cashout_enabled") {
+      console.log("cashout enabled called");
+      setButtonState("cashout_disabled")
+    } else {
+      if (!seedPairId) {
+        setError("No seed pair available. Please adjust bet/difficulty first.");
+        return;
+      }
+      setGameActive(true);
+      setError("");
+      // Once the user clicks => "Cash Out" with grey bg => disabled
+      setButtonState("cashout_disabled");
     }
-    setGameActive(true);
-    setError("");
-    // Once the user clicks => "Cash Out" with grey bg => disabled
-    setButtonState("cashout_disabled");
   };
 
   // (D) End Game => calls /seeds/retire
@@ -327,7 +333,7 @@ export function Home({ onPageChange }: HomeProps) {
       <div className=" ">
         <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
           {initialLoading ? (
-            <div className="  w-full min-h-[40rem] flex justify-center items-center ">
+            <div className="  w-full h-screen flex justify-center items-center ">
               <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
             </div>
           ) : (
@@ -359,8 +365,7 @@ export function Home({ onPageChange }: HomeProps) {
                     onClick={handleStartGame}
                     disabled={
                       buttonState === "start_loading" ||
-                      buttonState === "cashout_disabled" ||
-                      buttonState === "cashout_enabled"
+                      buttonState === "cashout_disabled"
                     }
                     className={getButtonClasses(buttonState)}
                   >
@@ -422,11 +427,10 @@ export function Home({ onPageChange }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
-                              difficulty === level
-                                ? "bg-purple-500 text-white"
-                                : "bg-white/5 text-gray-400 hover:bg-white/10"
-                            }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
+                              ? "bg-purple-500 text-white"
+                              : "bg-white/5 text-gray-400 hover:bg-white/10"
+                              }`}
                             disabled={gameActive}
                           >
                             {level}
@@ -447,8 +451,7 @@ export function Home({ onPageChange }: HomeProps) {
                       onClick={handleStartGame}
                       disabled={
                         buttonState === "start_loading" ||
-                        buttonState === "cashout_disabled" ||
-                        buttonState === "cashout_enabled"
+                        buttonState === "cashout_disabled"
                       }
                       className={getButtonClasses(buttonState)}
                     >
