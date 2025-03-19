@@ -56,7 +56,7 @@ const GameHistory: React.FC<GameHistoryProps> = ({ apiUrl }) => {
         Mission Uncrossable
       </h2>
       
-      <p className="text-gray-300 mb-6">
+      <p className="text-gray-300 mb-6 mt-[10px]">
         Play Mission Uncrossable, the Chicken Game on Roobet Crypto Casino, Crypto's Fastest Growing Casino! 
         Enjoy a library of 6,300+ exciting games and counting, including games by Roobet, such as Mission Uncrossable, 
         the Chicken Game. Play all kinds of provably fair games with Bitcoin, Ethereum, and other cryptocurrencies, 
