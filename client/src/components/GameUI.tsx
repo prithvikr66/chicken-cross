@@ -97,6 +97,14 @@ const GameUI: React.FC<GameUIProps> = ({
         if (targetLane === multipliers.length && crashLane !== multipliers.length) {
           setHenExiting(true);
         }
+        const isMobile = window.innerWidth <= 768;
+        const rightBgElement = document.getElementById(`right-bg-road`);
+        if (rightBgElement)
+          rightBgElement.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+            inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
+          });
       }
       setTargetLane(null);
 
@@ -122,7 +130,7 @@ const GameUI: React.FC<GameUIProps> = ({
 
   // Crash Car fully exits => reload or something
   const handleCrashComplete = () => {
-    window.location.reload();
+    setTimeout(() => window.location.reload(), 2000)
   };
 
   return (
@@ -163,6 +171,7 @@ const GameUI: React.FC<GameUIProps> = ({
             difficulty={difficulty}
             henLane={currentLane}
             roadWidth={roadWidth}
+            multipliers={multipliers}
             forceCrashCar={forceCrashCar}
             crashLane={crashLane ?? undefined}
             onCrashPass={handleCrashPass}
@@ -179,12 +188,14 @@ const GameUI: React.FC<GameUIProps> = ({
             onMoveComplete={handleMoveComplete}
             crashLane={crashLane}
             gameOver={false}
+            multipliers={multipliers}
             cockDead={cockDead}
             henExiting={henExiting}
           />
         </div>
         {/* Right BG */}
         <div
+          id="right-bg-road"
           style={{
             background: `url(${LeftRightBg})`,
             backgroundRepeat: "no-repeat",

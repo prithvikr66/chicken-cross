@@ -72,7 +72,7 @@ const GameHistory: React.FC<GameHistoryProps> = ({ apiUrl }) => {
         </div>
       ) : (
         <div className="overflow-hidden rounded-xl border border-white/10">
-          <div className="max-h-[400px] overflow-y-auto">
+          <div className="max-h-[400px] overflow-y-auto hide-scrollbar">
             <table className="w-full">
               <thead className="bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                 <tr className="text-left text-gray-400">

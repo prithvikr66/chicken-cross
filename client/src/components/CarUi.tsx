@@ -12,6 +12,7 @@ interface CarUiProps {
   forceCrashCar?: boolean;
   crashLane?: number;
   onCrashPass?: () => void;
+  multipliers: number[];
   onCrashComplete?: () => void;
 }
 
@@ -24,9 +25,6 @@ interface CarType {
   travelTime: number;
 }
 
-function getLaneCount(diff: "easy" | "medium" | "hard" | "daredevil") {
-  return diff === "daredevil" ? 5 : 6;
-}
 
 const speedMap: Record<"easy" | "medium" | "hard" | "daredevil", number> = {
   easy: 2000,
@@ -43,6 +41,7 @@ const CarUi: React.FC<CarUiProps> = ({
   henLane,
   roadWidth,
   forceCrashCar,
+  multipliers,
   crashLane,
   onCrashPass,
   onCrashComplete,
@@ -64,7 +63,8 @@ const CarUi: React.FC<CarUiProps> = ({
   useEffect(() => {
     if (henLane > 0) {
       const arr: number[] = [];
-      for (let i = 1; i <= henLane+1; i++) {
+      // this code specifies the number lanes after hen lane which doesnt spawn cars
+      for (let i = 1; i <= henLane + 2; i++) {
         arr.push(i);
       }
       crossedLanesRef.current = arr;
@@ -72,10 +72,12 @@ const CarUi: React.FC<CarUiProps> = ({
   }, [henLane]);
 
   // Spawn random cars
+  // Spawn random cars
   useEffect(() => {
+    const intervalDelay = speedMap[spawnDifficulty] / 2; // Decrease the interval delay as difficulty increases
     const interval = setInterval(() => {
       setCars((prev) => {
-        const laneCount = getLaneCount(spawnDifficulty);
+        const laneCount = multipliers.length;
         const speed = speedMap[spawnDifficulty];
 
         const available = Array.from({ length: laneCount }, (_, i) => i + 1).filter(
@@ -86,7 +88,7 @@ const CarUi: React.FC<CarUiProps> = ({
         if (available.length === 0) return prev;
 
         const lane = available[Math.floor(Math.random() * available.length)];
-        const images = [Car1Img, Car2Img,Car3Img,Car4Img,Car5Img];
+        const images = [Car1Img, Car2Img, Car3Img, Car4Img, Car5Img];
         const image = images[Math.floor(Math.random() * images.length)];
 
         const id = nextId.current++;
@@ -110,10 +112,11 @@ const CarUi: React.FC<CarUiProps> = ({
 
         return [...prev, newCar];
       });
-    }, 2000);
+    }, intervalDelay); // Modify the interval dynamically based on difficulty
 
     return () => clearInterval(interval);
   }, [spawnDifficulty]);
+
 
   // Force crash car if hen hits crash lane
   useEffect(() => {

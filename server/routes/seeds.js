@@ -103,11 +103,24 @@ async function determineCrashLane(outcome, difficulty) {
 
 async function getMultipliers(difficulty) {
   const baseMultipliers = {
-    easy: [1.0, 1.01, 1.03, 1.05, 1.07, 1.1, 1.13, 1.16, 1.19, 1.23], // Grows slowly to ~x24 by lane 24
-    medium: [1.09, 1.15, 1.22, 1.3, 1.39, 1.5, 1.62, 1.75, 1.9, 2.06], // Scales to ~x2,208 by lane 24
-    hard: [1.2, 1.32, 1.45, 1.6, 1.78, 1.98, 2.22, 2.5, 2.82, 3.18], // Reaches ~x51,004.80 by lane 24
-    daredevil: [1.6, 1.92, 2.3, 2.76, 3.31, 3.97, 4.77, 5.72, 6.86, 8.23], // Climbs to ~x3,138,009.60 by lane 24
+    easy: [
+      1.0, 1.01, 1.03, 1.06, 1.1, 1.14, 1.18, 1.23, 1.28, 1.34,
+      1.4, 1.46
+    ], // Grows more rapidly with each level
+    medium: [
+      1.09, 1.15, 1.22, 1.31, 1.41, 1.53, 1.66, 1.81, 1.97, 2.14,
+      2.32, 2.52, 2.73, 2.95, 3.19
+    ], // Faster growth than before
+    hard: [
+      1.2, 1.32, 1.45, 1.6, 1.78, 1.98, 2.22, 2.5, 2.82, 3.18,
+      3.58, 4.01, 4.47, 4.97, 5.5, 6.06, 6.86, 8.23
+    ], // More pronounced growth
+    daredevil: [
+      1.6, 1.92, 2.3, 2.76, 3.31, 3.97, 4.77, 5.72, 6.86, 8.23,
+      10.02, 12.02, 14.43, 17.26, 20.52, 24.31, 28.65, 33.64, 39.35, 45.88
+    ], // Highly accelerated multiplier progression
   };
+
 
   let multipliers = baseMultipliers[difficulty] || baseMultipliers.easy;
 

@@ -19,5 +19,5 @@
         }
       },
     },
-    plugins: [],
+    plugins: [require('tailwind-scrollbar-hide')],
   };
