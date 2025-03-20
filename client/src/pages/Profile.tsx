@@ -393,6 +393,10 @@ export function Profile({
 
       const data = await response.json();
 
+      if (response.status === 409) {
+        throw new Error("You already have a pending withdrawal request. Please try again after some time");
+      }
+
       if (!response.ok) {
         throw new Error(data.error || "Failed to process withdrawal");
       }
@@ -536,10 +540,10 @@ export function Profile({
       </button>
 
       {/* Profile Header */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
         {/* Profile Card */}
-        <div className="lg:col-span-1">
-          <div className="bg-[#1A2C38] rounded-2xl p-6 space-y-6 border border-white/10">
+        <div className="lg:col-span-1 h-full">
+          <div className="bg-[#1A2C38] rounded-2xl p-6 space-y-6 border border-white/10 h-full">
             <div className="relative">
               <img
                 src={profile.profileImage}
@@ -617,32 +621,26 @@ export function Profile({
         </div>
 
         {/* Transaction History */}
-        <div className="lg:col-span-2">
-          <div className="bg-[#1A2C38] rounded-2xl p-6 border border-white/10 h-full">
+        <div className="lg:col-span-2 h-full">
+          <div className="bg-[#1A2C38] rounded-2xl p-6 border border-white/10 h-full flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-yellow-400" />
-                <h3 className="text-xl font-bold text-white">
-                  Transaction History
-                </h3>
+                <h3 className="text-xl font-bold text-white">Transaction History</h3>
               </div>
             </div>
 
-            <div className="overflow-x-auto -mx-6">
-              <div className="inline-block min-w-full align-middle px-6">
-                <div className="overflow-hidden max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-transparent">
-                  <table className="min-w-full">
+            <div className="overflow-x-auto -mx-6 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+              <div className="inline-block min-w-full align-middle px-6 h-full">
+                <div className="overflow-x-auto overflow-y-auto max-h-[400px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+                  <table className="min-w-[800px] w-full">
                     <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
                         <th className="pb-4 font-medium">Type</th>
                         <th className="pb-4 font-medium">Status</th>
                         <th className="pb-4 font-medium">Amount</th>
-                        <th className="pb-4 font-medium hidden sm:table-cell">
-                          Date
-                        </th>
-                        <th className="pb-4 font-medium hidden md:table-cell">
-                          Transaction
-                        </th>
+                        <th className="pb-4 font-medium">Date</th>
+                        <th className="pb-4 font-medium">Transaction</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -707,7 +705,7 @@ export function Profile({
                                 {tx.amount} SOL
                               </span>
                             </td>
-                            <td className="py-4 hidden sm:table-cell text-purple-200">
+                            <td className="py-4">
                               <span
                                 className="text-purple-200 cursor-help"
                                 title={new Date(tx.created_at).toLocaleString(
@@ -735,7 +733,7 @@ export function Profile({
                                 )}
                               </span>
                             </td>
-                            <td className="py-4 hidden md:table-cell">
+                            <td className="py-4">
                               <a
                                 href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
                                 target="_blank"
@@ -814,26 +812,17 @@ export function Profile({
               <h3 className="text-xl font-bold text-white">Recent Bets</h3>
             </div>
 
-            <div className="relative w-full overflow-x-auto scrollbar-none">
-              <div className="max-h-[400px] overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
-                <table className="w-full">
+            {/* Update the table container to enable horizontal scrolling */}
+            <div className="relative w-full overflow-x-auto">
+              <div className="max-h-[400px] overflow-y-auto hide-scrollbar scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
+                <table className="w-full min-w-[800px]"> {/* Add min-width to ensure table doesn't compress */}
                   <thead className="sticky top-0 bg-[#1A2C38] z-10">
                     <tr className="text-left text-xs uppercase text-purple-200">
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">
-                        Amount
-                      </th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">
-                        Payout
-                      </th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">
-                        P/L
-                      </th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">
-                        Difficulty
-                      </th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">
-                        Date
-                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">Amount</th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">Payout</th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">P/L</th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">Difficulty</th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -842,18 +831,13 @@ export function Profile({
                         <td colSpan={5} className="px-4 py-8 text-center">
                           <div className="flex items-center justify-center space-x-2">
                             <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                            <span className="text-gray-400">
-                              Loading bets...
-                            </span>
+                            <span className="text-gray-400">Loading bets...</span>
                           </div>
                         </td>
                       </tr>
                     ) : !bettingHistory.length ? (
                       <tr>
-                        <td
-                          colSpan={5}
-                          className="px-4 py-20 text-center text-gray-400"
-                        >
+                        <td colSpan={5} className="px-4 py-20 text-center text-gray-400">
                           No betting history found
                         </td>
                       </tr>
@@ -907,49 +891,14 @@ export function Profile({
                           <td className="px-4 py-4 whitespace-nowrap relative group">
                             <span
                               className="text-purple-200 cursor-help"
-                              title={new Date(bet.created_at).toLocaleString(
-                                undefined,
-                                {
-                                  weekday: "long",
-                                  year: "numeric",
-                                  month: "long",
-                                  day: "numeric",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                  second: "2-digit",
-                                  timeZoneName: "short",
-                                }
-                              )}
                             >
-                              {new Date(bet.created_at).toLocaleDateString(
-                                undefined,
-                                {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                }
-                              )}
+                              {new Date(bet.created_at).toLocaleDateString(undefined, {
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
                             </span>
-                            {/* Custom Tooltip */}
-                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 hidden group-hover:block z-50">
-                              <div className="bg-black/90 text-white text-sm px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
-                                {new Date(bet.created_at).toLocaleString(
-                                  undefined,
-                                  {
-                                    weekday: "long",
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second: "2-digit",
-                                    timeZoneName: "short",
-                                  }
-                                )}
-                                <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-black/90"></div>
-                              </div>
-                            </div>
                           </td>
                         </tr>
                       ))
@@ -984,12 +933,6 @@ export function Profile({
                   <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
                     Profile Settings
                   </h3>
-                  <button
-                    onClick={handleCloseSettings}
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    ×
-                  </button>
                 </div>
 
                 <form onSubmit={handleSubmit} className="space-y-6">
@@ -1129,12 +1072,6 @@ export function Profile({
                   <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
                     Deposit SOL
                   </h3>
-                  <button
-                    onClick={() => setShowDepositModal(false)}
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    ×
-                  </button>
                 </div>
 
                 <form onSubmit={handleDepositSubmit} className="space-y-6">
@@ -1202,10 +1139,10 @@ export function Profile({
                   <Check className="w-8 h-8 text-green-500" />
                 </div>
                 <h3 className="text-xl font-bold text-green-500 mt-4 mb-2">
-                  Withdrawal Successful!
+                  Withdrwal Request created
                 </h3>
                 <p className="text-gray-400 text-center">
-                  Your funds have been sent to your wallet
+                  Your request should be processed within 24 hours
                 </p>
               </div>
             ) : withdrawError ? (
@@ -1242,12 +1179,7 @@ export function Profile({
                   <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
                     Withdraw SOL
                   </h3>
-                  <button
-                    onClick={() => setShowWithdrawModal(false)}
-                    className="text-gray-400 hover:text-white transition-colors"
-                  >
-                    ×
-                  </button>
+                
                 </div>
 
                 <form onSubmit={handleWithdrawSubmit} className="space-y-6">
@@ -1265,7 +1197,11 @@ export function Profile({
                       />
                       <button
                         type="button"
-                        onClick={() => handleWithdrawChange("245.5")}
+                        onClick={() =>
+                          handleWithdrawChange(
+                            profile.account_balance.toFixed(3).toString()
+                          )
+                        }
                         className="absolute right-2 top-2 px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
                       >
                         MAX
