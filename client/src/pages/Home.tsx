@@ -240,7 +240,7 @@ export function Home({ onPageChange }: HomeProps) {
   };
   const handleQuickBet = (multiplier: number) => {
     const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(2));
+    setBetAmount((currentValue * multiplier).toFixed(3));
   };
 
   // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
@@ -266,7 +266,7 @@ export function Home({ onPageChange }: HomeProps) {
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium">
                     {balance !== null
-                      ? `${balance.toFixed(2)} SOL`
+                      ? `${balance.toFixed(3)} SOL`
                       : "Loading..."}
                   </span>
                   <ChevronDown className="w-4 h-4 text-gray-400" />
@@ -282,7 +282,7 @@ export function Home({ onPageChange }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance} SOL` : "Loading..."}
+                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
                   </span>
                 </div>
               </div>

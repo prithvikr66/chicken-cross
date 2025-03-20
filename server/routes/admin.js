@@ -42,13 +42,57 @@ router.post("/completed-transactions", async (req, res) => {
     for (const tx of transactions) {
       const { id, signature, status, updated_at } = tx;
 
-      const { error } = await supabase
+      // Step 1: Fetch the transaction details
+      const { data: transactionData, error: fetchError } = await supabase
+        .from("transactions")
+        .select("amount, wallet_address")
+        .eq("id", id)
+        .single();
+
+      if (fetchError || !transactionData) {
+        console.error("Error fetching transaction details:", fetchError);
+        return res.status(500).json({ error: "Failed to fetch transaction details" });
+      }
+
+      const { amount, wallet_address } = transactionData;
+
+      // Step 2: If status is "failed", add the amount back to the user's account
+      if (status === "failed") {
+        // Fetch the user's current balance
+        const { data: userData, error: userError } = await supabase
+          .from("users")
+          .select("account_balance")
+          .eq("wallet_address", wallet_address)
+          .single();
+
+        if (userError || !userData) {
+          console.error("Error fetching user details:", userError);
+          return res.status(500).json({ error: "Failed to fetch user details" });
+        }
+
+        const currentBalance = userData.account_balance;
+        const newBalance = currentBalance + amount; // Add the amount back
+
+        // Update the user's balance
+        const { error: updateBalanceError } = await supabase
+          .from("users")
+          .update({ account_balance: newBalance })
+          .eq("wallet_address", wallet_address);
+
+        if (updateBalanceError) {
+          console.error("Error updating user balance:", updateBalanceError);
+          return res.status(500).json({ error: "Failed to update user balance" });
+        }
+      }
+
+      // Step 3: Update the transaction status
+      const { error: updateError } = await supabase
         .from("transactions")
         .update({ status, signature, updated_at })
         .eq("id", id);
 
-      if (error) {
-        console.error("Error updating transaction:", error);
+      if (updateError) {
+        console.error("Error updating transaction:", updateError);
         return res.status(500).json({ error: "Failed to update transaction status" });
       }
     }
