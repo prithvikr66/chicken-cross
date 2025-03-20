@@ -176,6 +176,29 @@ router.post("/withdraw", async (req, res) => {
   }
 
   try {
+    // Step 1: Check if the user has a pending withdrawal request
+    const { data: pendingWithdrawals, error: pendingError } = await supabase
+      .from("transactions")
+      .select("*")
+      .eq("wallet_address", wallet_address)
+      .eq("transaction_type", "withdrawal")
+      .eq("status", "pending");
+
+    if (pendingError) {
+      console.error("Error checking pending withdrawals:", pendingError);
+      return res
+        .status(500)
+        .json({ error: "Failed to check pending withdrawals" });
+    }
+
+    // If there are pending withdrawals, return an error
+    if (pendingWithdrawals && pendingWithdrawals.length > 0) {
+      return res
+        .status(409)
+        .json({ error: "You already have a pending withdrawal request" });
+    }
+
+    // Step 2: Fetch the user's current balance
     const { data: userData, error: userError } = await supabase
       .from("users")
       .select("account_balance")
@@ -188,10 +211,12 @@ router.post("/withdraw", async (req, res) => {
 
     const currentBalance = userData.account_balance;
 
+    // Step 3: Check if the user has enough balance to withdraw
     if (currentBalance < amount) {
       return res.status(400).json({ error: "Insufficient balance" });
     }
 
+    // Step 4: Deduct the withdrawal amount from the user's balance
     const newBalance = currentBalance - amount;
     const { error: updateError } = await supabase
       .from("users")
@@ -202,6 +227,8 @@ router.post("/withdraw", async (req, res) => {
       console.error("Error updating user balance:", updateError);
       return res.status(500).json({ error: "Failed to update user balance" });
     }
+
+    // Step 5: Create a new withdrawal transaction
     const { data: transaction, error: transactionError } = await supabase
       .from("transactions")
       .insert([
@@ -217,9 +244,12 @@ router.post("/withdraw", async (req, res) => {
 
     if (transactionError) {
       console.error("Error creating withdrawal transaction:", transactionError);
-      return res.status(500).json({ error: "Failed to create withdrawal transaction" });
+      return res
+        .status(500)
+        .json({ error: "Failed to create withdrawal transaction" });
     }
 
+    // Step 6: Return the created transaction
     res.status(201).json({ success: true, transaction });
   } catch (err) {
     console.error("Error in /api/withdraw route:", err);
@@ -227,44 +257,43 @@ router.post("/withdraw", async (req, res) => {
   }
 });
 
-router.get('/game-history', async (req, res) => {
+router.get("/game-history", async (req, res) => {
   const walletAddress = req.query.wallet_address;
 
   if (!walletAddress) {
-      return res.status(400).json({ error: 'Wallet address is required' });
+    return res.status(400).json({ error: "Wallet address is required" });
   }
 
   try {
     const { data: userData, error: userError } = await supabase
-            .from('users')
-            .select('total_wag, total_won, total_bets')
-            .eq('wallet_address', walletAddress)
-            .single(); 
-        if (userError) throw userError;
+      .from("users")
+      .select("total_wag, total_won, total_bets")
+      .eq("wallet_address", walletAddress)
+      .single();
+    if (userError) throw userError;
 
-        const { data: transactions, error: transactionsError } = await supabase
-        .from('game_history')
-        .select('*')
-        .eq('wallet_address', walletAddress)
-        .order('created_at', { ascending: false })
-        .limit(20);
+    const { data: transactions, error: transactionsError } = await supabase
+      .from("game_history")
+      .select("*")
+      .eq("wallet_address", walletAddress)
+      .order("created_at", { ascending: false })
+      .limit(20);
 
     if (transactionsError) throw transactionsError;
 
     const response = {
       user_stats: {
-          total_wag: userData.total_wag,
-          total_won: userData.total_won,
-          total_bets: userData.total_bets,
+        total_wag: userData.total_wag,
+        total_won: userData.total_won,
+        total_bets: userData.total_bets,
       },
       transactions: transactions,
-  };
+    };
 
-  res.json(response);
+    res.json(response);
   } catch (err) {
-      res.status(500).json({ error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
-
 
 export const transactionRoutes = router;
