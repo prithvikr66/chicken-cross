@@ -265,6 +265,7 @@ router.get("/active", async (req, res) => {
 });
 
 router.post("/retire", async (req, res) => {
+  console.log("retire api called!")
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 
