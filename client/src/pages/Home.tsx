@@ -5,6 +5,7 @@ import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
 import GameHistory from "../components/GameHistory";
+import useExitHandler from "../utils/useExitHandler";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -50,6 +51,8 @@ export function Home({ onPageChange }: HomeProps) {
     "easy" | "medium" | "hard" | "daredevil"
   >("easy");
   const [balance, setBalance] = useState<number | null>(null);
+  const [crashLane, setCrashLane] = useState<number | null>(null);
+  const [currentLane, setCurrentLane] = useState<number>(0);
 
   // Error / loading
   const [error, setError] = useState("");
@@ -64,6 +67,7 @@ export function Home({ onPageChange }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
+  useExitHandler(seedPairId, Number(betAmount),currentLane);
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -99,6 +103,22 @@ export function Home({ onPageChange }: HomeProps) {
     };
     fetchInitialData();
   }, [publicKey]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (gameActive) {
+        event.preventDefault();
+        event.returnValue =
+          "You have an active game session. You will lose the bet on leaving!";
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+    };
+  }, [gameActive]);
 
   // 2) If difficulty changes & no active game, switch multipliers
   useEffect(() => {
@@ -161,7 +181,7 @@ export function Home({ onPageChange }: HomeProps) {
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
-          (err.response?.data?.error || err.message)
+            (err.response?.data?.error || err.message)
         );
         // Return to default if error
         setButtonState("start_default");
@@ -174,20 +194,64 @@ export function Home({ onPageChange }: HomeProps) {
   }, [betAmount, difficulty, publicKey, balance]);
 
   // (C) Start Game => user clicks => switch to "cashout_disabled"
-  const handleStartGame = () => {
+  const handleStartGame = async () => {
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
     if (buttonState === "cashout_enabled") {
-      console.log("cashout enabled called");
-      setButtonState("cashout_disabled")
+      if (parseFloat(betAmount) > 0) {
+        const response = await axios.post(
+          `${API_URL}/api/seeds/retire`,
+          { seedPairId, betAmount: parseFloat(betAmount), currentLane },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setBalance(response.data.newBalance)
+      }
+
+      // reset
+      setGameActive(false);
+      setClientSeed("");
+      setSeedPairId("");
+      setServerSeedHash("");
+      setEncryptedCrashLane(undefined);
+      setNonce("");
+      setKeyPair(null);
+      window.location.reload();
+      setButtonState("cashout_disabled");
     } else {
       if (!seedPairId) {
         setError("No seed pair available. Please adjust bet/difficulty first.");
         return;
       }
+      if (parseFloat(betAmount) > 0) {
+        const response = await axios.post(
+          `${API_URL}/api/seeds/gamestart`,
+          { betAmount: betAmount },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setBalance(response.data.newBalance);
+      }
       setGameActive(true);
       setError("");
-      // Once the user clicks => "Cash Out" with grey bg => disabled
       setButtonState("cashout_disabled");
     }
+  };
+
+  const handleCrashComplete = async () => {
+    setGameActive(false)
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    if (!seedPairId) {
+      setError("No seed pair available. Please adjust bet/difficulty first.");
+      return;
+    }
+    if (parseFloat(betAmount) > 0) {
+      const response = await axios.post(
+        `${API_URL}/api/seeds/crash`,
+        { seedPairId, betAmount: parseFloat(betAmount), crashLane },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      window.location.reload();
+    } else setTimeout(() => window.location.reload(), 2000);
   };
 
   // (D) End Game => calls /seeds/retire
@@ -282,7 +346,9 @@ export function Home({ onPageChange }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
+                    {balance !== null
+                      ? `${balance.toFixed(3)} SOL`
+                      : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -349,6 +415,11 @@ export function Home({ onPageChange }: HomeProps) {
                   nonce={nonce}
                   gameActive={gameActive}
                   onFirstLaneClick={handleFirstLaneClick}
+                  crashLane={crashLane}
+                  setCrashLane={setCrashLane}
+                  handleCrashComplete={handleCrashComplete}
+                  currentLane={currentLane}
+                  setCurrentLane={setCurrentLane}
                 />
               </div>
 
@@ -427,10 +498,11 @@ export function Home({ onPageChange }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 text-gray-400 hover:bg-white/10"
-                              }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
+                              difficulty === level
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            }`}
                             disabled={gameActive}
                           >
                             {level}

@@ -103,24 +103,20 @@ async function determineCrashLane(outcome, difficulty) {
 
 async function getMultipliers(difficulty) {
   const baseMultipliers = {
-    easy: [
-      1.0, 1.01, 1.03, 1.06, 1.1, 1.14, 1.18, 1.23, 1.28, 1.34,
-      1.4, 1.46
-    ], // Grows more rapidly with each level
+    easy: [1.0, 1.01, 1.03, 1.06, 1.1, 1.14, 1.18, 1.23, 1.28, 1.34, 1.4, 1.46], // Grows more rapidly with each level
     medium: [
-      1.09, 1.15, 1.22, 1.31, 1.41, 1.53, 1.66, 1.81, 1.97, 2.14,
-      2.32, 2.52, 2.73, 2.95, 3.19
+      1.09, 1.15, 1.22, 1.31, 1.41, 1.53, 1.66, 1.81, 1.97, 2.14, 2.32, 2.52,
+      2.73, 2.95, 3.19,
     ], // Faster growth than before
     hard: [
-      1.2, 1.32, 1.45, 1.6, 1.78, 1.98, 2.22, 2.5, 2.82, 3.18,
-      3.58, 4.01, 4.47, 4.97, 5.5, 6.06, 6.86, 8.23
+      1.2, 1.32, 1.45, 1.6, 1.78, 1.98, 2.22, 2.5, 2.82, 3.18, 3.58, 4.01, 4.47,
+      4.97, 5.5, 6.06, 6.86, 8.23,
     ], // More pronounced growth
     daredevil: [
-      1.6, 1.92, 2.3, 2.76, 3.31, 3.97, 4.77, 5.72, 6.86, 8.23,
-      10.02, 12.02, 14.43, 17.26, 20.52, 24.31, 28.65, 33.64, 39.35, 45.88
+      1.6, 1.92, 2.3, 2.76, 3.31, 3.97, 4.77, 5.72, 6.86, 8.23, 10.02, 12.02,
+      14.43, 17.26, 20.52, 24.31, 28.65, 33.64, 39.35, 45.88,
     ], // Highly accelerated multiplier progression
   };
-
 
   let multipliers = baseMultipliers[difficulty] || baseMultipliers.easy;
 
@@ -265,7 +261,7 @@ router.get("/active", async (req, res) => {
 });
 
 router.post("/retire", async (req, res) => {
-  console.log("retire api called!")
+  console.log("retire api called!");
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 
@@ -318,13 +314,143 @@ router.post("/retire", async (req, res) => {
 
       if (userError) throw userError;
 
-      const newBalance = (userData.account_balance || 0) - betAmount + payout;
+      const newBalance = (userData.account_balance || 0) + payout;
       const { error: balanceError } = await supabase
         .from("users")
         .update({ account_balance: newBalance })
         .eq("wallet_address", walletAddress);
 
       if (balanceError) throw balanceError;
+    }
+
+    const newNonce = seedPair.nonce + 1;
+    const { data, error } = await supabase
+      .from("seed_pairs")
+      .update({
+        is_active: false,
+        retired_at: new Date().toISOString(),
+        nonce: newNonce,
+      })
+      .eq("id", seedPairId)
+      .eq("wallet_address", walletAddress)
+      .eq("is_active", true)
+      .select(
+        "id, server_seed, server_seed_hash, client_seed, difficulty, crash_lane, multipliers, nonce"
+      )
+      .single();
+
+    if (error || !data) {
+      return res
+        .status(404)
+        .json({ error: "Seed pair not found or already retired" });
+    }
+
+    res.json({
+      seedPairId: data.id,
+      serverSeed: data.server_seed,
+      serverSeedHash: data.server_seed_hash,
+      clientSeed: data.client_seed,
+      difficulty: data.difficulty,
+      crashLane: data.crash_lane,
+      multipliers: data.multipliers,
+      finalNonce: data.nonce,
+      payout: payout,
+      newBalance: newBalance,
+    });
+  } catch (error) {
+    console.error("Retire seed pair error:", error);
+    res.status(500).json({ error: "Failed to retire seed pair" });
+  }
+});
+
+router.post("/gamestart", async (req, res) => {
+  const { betAmount } = req.body;
+  const { walletAddress } = req;
+
+  if (!betAmount || betAmount <= 0) {
+    return res.status(400).json({ error: "Invalid bet amount" });
+  }
+
+  try {
+    // Fetch user balance
+    const { data: userData, error: userError } = await supabase
+      .from("users")
+      .select("account_balance, total_wag, total_bets")
+      .eq("wallet_address", walletAddress)
+      .single();
+
+    if (userError || !userData) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    if (userData.account_balance < betAmount) {
+      return res.status(400).json({ error: "Insufficient balance" });
+    }
+    const newBalance = userData.account_balance - betAmount;
+    const newTotalWagered = Number(userData.total_wag) + Number(betAmount);
+    const newTotalBets = userData.total_bets + 1;
+
+    // Deduct balance
+    const { error: updateError } = await supabase
+      .from("users")
+      .update({
+        account_balance: newBalance,
+        total_wag: newTotalWagered,
+        total_bets: newTotalBets,
+      })
+      .eq("wallet_address", walletAddress);
+
+    if (updateError) console.log(updateError);
+
+    res.json({ success: true, newBalance });
+  } catch (error) {
+    console.error("Balance deduction error:", error);
+    res.status(500).json({ error: "Failed to deduct balance" });
+  }
+});
+
+router.post("/crash", async (req, res) => { 
+  console.log("crash api called")
+  const { walletAddress } = req;
+  const { seedPairId, betAmount, cashOutLane } = req.body;
+
+  if (!seedPairId || betAmount === undefined) {
+    return res
+      .status(400)
+      .json({ error: "Seed pair ID and bet amount are required" });
+  }
+
+  try {
+    const { data: seedPair, error: fetchError } = await supabase
+      .from("seed_pairs")
+      .select("nonce, crash_lane, difficulty, multipliers")
+      .eq("id", seedPairId)
+      .eq("wallet_address", walletAddress)
+      .eq("is_active", true)
+      .single();
+
+    if (fetchError || !seedPair) {
+      return res
+        .status(404)
+        .json({ error: "Seed pair not found or already retired" });
+    }
+
+    const payout = 0;
+
+    if (betAmount > 0) {
+      // Only log and update balance if not demo mode
+      const { error: logError } = await supabase.from("game_history").insert({
+        wallet_address: walletAddress,
+        seed_pair_id: seedPairId,
+        bet_amount: betAmount,
+        payout: payout,
+        cash_out_lane: cashOutLane || null,
+        crash_lane: seedPair.crash_lane,
+        difficulty: seedPair.difficulty,
+      });
+
+      if (logError) throw logError;
+
     }
 
     const newNonce = seedPair.nonce + 1;
