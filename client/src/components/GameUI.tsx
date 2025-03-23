@@ -15,6 +15,11 @@ interface GameUIProps {
   nonce: string;
   gameActive: boolean;
   onFirstLaneClick?: () => void;
+  crashLane :any;
+  setCrashLane:any;
+  handleCrashComplete:any,
+  setCurrentLane:any,
+  currentLane:any
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -24,15 +29,18 @@ const GameUI: React.FC<GameUIProps> = ({
   encryptedCrashLane,
   gameActive,
   onFirstLaneClick,
+  crashLane,
+  setCrashLane,
+  handleCrashComplete,
+  currentLane,
+  setCurrentLane
 }) => {
   const roadWidth = 155;
 
   // We track the hen's lane states
-  const [currentLane, setCurrentLane] = useState<number>(0);
   const [targetLane, setTargetLane] = useState<number | null>(null);
 
   // Crash logic
-  const [crashLane, setCrashLane] = useState<number | null>(null);
   const [forceCrashCar, setForceCrashCar] = useState(false);
   const [cockDead, setCockDead] = useState(false);
   const [henExiting, setHenExiting] = useState(false);
@@ -128,10 +136,9 @@ const GameUI: React.FC<GameUIProps> = ({
     setCockDead(true);
   };
 
-  // Crash Car fully exits => reload or something
-  const handleCrashComplete = () => {
-    setTimeout(() => window.location.reload(), 2000)
-  };
+  useEffect(()=>console.log(currentLane),[currentLane])
+
+  
 
   return (
     <div className="  h-[20rem] lg:h-[25rem] w-fit relative">
