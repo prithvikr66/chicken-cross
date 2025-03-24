@@ -15,11 +15,11 @@ interface GameUIProps {
   nonce: string;
   gameActive: boolean;
   onFirstLaneClick?: () => void;
-  crashLane :any;
-  setCrashLane:any;
-  handleCrashComplete:any,
-  setCurrentLane:any,
-  currentLane:any
+  crashLane: any;
+  setCrashLane: any;
+  handleCrashComplete: any;
+  setCurrentLane: any;
+  currentLane: any;
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -33,21 +33,21 @@ const GameUI: React.FC<GameUIProps> = ({
   setCrashLane,
   handleCrashComplete,
   currentLane,
-  setCurrentLane
+  setCurrentLane,
 }) => {
   const roadWidth = 155;
-
-  // We track the hen's lane states
+ 
+  // (existing states, etc.)
   const [targetLane, setTargetLane] = useState<number | null>(null);
-
-  // Crash logic
   const [forceCrashCar, setForceCrashCar] = useState(false);
   const [cockDead, setCockDead] = useState(false);
   const [henExiting, setHenExiting] = useState(false);
-  // Ref for the lanes container so we can auto-scroll
   const lanesContainerRef = useRef<HTMLDivElement>(null);
 
-  // On receiving crash lane from server
+  // NEW: Show or hide the "cashout" animation in the last lane
+  const [showLastLaneCashout, setShowLastLaneCashout] = useState(false);
+
+  // If we get the final crash lane from server, store it
   useEffect(() => {
     if (encryptedCrashLane !== undefined) {
       setCrashLane(encryptedCrashLane);
@@ -62,10 +62,11 @@ const GameUI: React.FC<GameUIProps> = ({
       setCockDead(false);
       setForceCrashCar(false);
       setCrashLane(null);
+      setHenExiting(false);
+      setShowLastLaneCashout(false);
     }
   }, [gameActive]);
 
-  // When the game starts, ensure the first lane is in view for mobile devices
   useEffect(() => {
     if (gameActive) {
       const isMobile = window.innerWidth <= 768; // Common breakpoint for mobile devices
@@ -82,28 +83,29 @@ const GameUI: React.FC<GameUIProps> = ({
     }
   }, [gameActive]);
 
-  // When user clicks a lane => set targetLane
   const handleLaneClick = (clickedLaneIndex: number) => {
     if (!gameActive) return;
     setTargetLane(clickedLaneIndex);
 
-    // If the user clicked lane #1, notify Home so it can enable "Cash Out" button
-    if (onFirstLaneClick) {
-      onFirstLaneClick();
-    }
+    // If the user clicked lane #1, notify to enable "Cash Out" button in parent
+    if (onFirstLaneClick) onFirstLaneClick();
   };
 
-  // Update the handleMoveComplete function in GameUI.tsx
-  const handleMoveComplete = () => {
+  const handleGameEnd = () => {
     if (targetLane !== null) {
       setCurrentLane(targetLane);
 
+      // If this lane is the crash lane => force crash
       if (crashLane && targetLane === crashLane) {
         setForceCrashCar(true);
       } else {
-        // If user is on the last lane & it's not crash => exit screen
+        // If user is on the last lane & it's not a crash => exit the screen
         if (targetLane === multipliers.length && crashLane !== multipliers.length) {
           setHenExiting(true);
+
+          // HERE: Show the cashout div in the last lane
+          setShowLastLaneCashout(true);
+
         }
         const isMobile = window.innerWidth <= 768;
         const rightBgElement = document.getElementById(`right-bg-road`);
@@ -114,34 +116,29 @@ const GameUI: React.FC<GameUIProps> = ({
             inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
           });
       }
+
       setTargetLane(null);
 
-      // Auto-scroll to keep hen in view
+      // Auto-scroll so the hen is in view
       const laneElement = document.getElementById(`lane-${targetLane + 1}`);
       if (laneElement) {
-        // Detect if the device is likely a mobile device based on screen width
-        const isMobile = window.innerWidth <= 768; // Common breakpoint for mobile devices
-
+        const isMobile = window.innerWidth <= 768;
         laneElement.scrollIntoView({
           behavior: "smooth",
           block: "nearest",
-          inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
+          inline: isMobile ? "end" : "center",
         });
       }
     }
   };
 
-  // Crash Car passes => cock dead
+  // Car crash passes => set cockDead
   const handleCrashPass = () => {
     setCockDead(true);
   };
 
-  useEffect(()=>console.log(currentLane),[currentLane])
-
-  
-
   return (
-    <div className="  h-[20rem] lg:h-[25rem] w-fit relative">
+    <div className="h-[20rem] lg:h-[25rem] w-fit relative">
       <div className="h-full flex relative">
         {/* Left BG */}
         <div
@@ -154,11 +151,9 @@ const GameUI: React.FC<GameUIProps> = ({
         >
           <img src={LeftBg} className="absolute left-0" alt="Left background" />
         </div>
+
         {/* Road lanes */}
-        <div
-          ref={lanesContainerRef}
-          className="flex h-full  overflow-x-auto lanes-container  "
-        >
+        <div ref={lanesContainerRef} className="flex h-full overflow-x-auto lanes-container">
           {multipliers.map((value, index) => (
             <RoadUI
               key={index}
@@ -169,11 +164,14 @@ const GameUI: React.FC<GameUIProps> = ({
               currentLane={currentLane}
               onLaneClick={handleLaneClick}
               hideWall={crashLane === index + 1}
+              // Pass down a prop to show the cashout on the final lane
+              showCashout={showLastLaneCashout && index + 1 === multipliers.length}
             />
           ))}
         </div>
+
         {/* Car UI */}
-        <div className="absolute top-0 left-[10rem] right-[10rem]  bottom-0 pointer-events-none">
+        <div className="absolute top-0 left-[10rem] right-[10rem] bottom-0 pointer-events-none">
           <CarUi
             difficulty={difficulty}
             henLane={currentLane}
@@ -185,6 +183,7 @@ const GameUI: React.FC<GameUIProps> = ({
             onCrashComplete={handleCrashComplete}
           />
         </div>
+
         {/* Cock UI */}
         <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
           <CockUi
@@ -192,14 +191,15 @@ const GameUI: React.FC<GameUIProps> = ({
             maxHeight={400}
             targetLane={targetLane}
             currentLane={currentLane}
-            onMoveComplete={handleMoveComplete}
+            onMoveComplete={handleGameEnd}
             crashLane={crashLane}
-            gameOver={false}
             multipliers={multipliers}
             cockDead={cockDead}
             henExiting={henExiting}
+            gameOver={false} // existing
           />
         </div>
+
         {/* Right BG */}
         <div
           id="right-bg-road"
@@ -210,11 +210,7 @@ const GameUI: React.FC<GameUIProps> = ({
           }}
           className="overflow-hidden h-full w-[10rem] relative"
         >
-          <img
-            src={RightBg}
-            className="absolute right-0"
-            alt="Right background"
-          />
+          <img src={RightBg} className="absolute right-0" alt="Right background" />
         </div>
       </div>
     </div>

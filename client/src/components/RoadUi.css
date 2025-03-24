@@ -25,3 +25,27 @@
   opacity: 1;
   z-index: 10;
 }
+
+@keyframes flyUp {
+  0% {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(24px);
+  }
+  90% {
+    opacity: 1;
+    transform: translateY(-24px);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-30px);
+  }
+}
+
+.animate-flyUp {
+  animation: flyUp 1.5s linear forwards;
+}
+

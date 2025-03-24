@@ -12,9 +12,8 @@ interface RoadUIProps {
   onLaneClick: (laneIndex: number) => void;
   hideWall?: boolean;
 
-  // If you previously added highlight logic, e.g. highlightLane?: number | null;
-  // you can keep that here, or remove if not needed:
-  // highlightLane?: number | null;
+  // NEW: Tells us whether to show the “cashout” animation
+  showCashout?: boolean;
 }
 
 function RoadUI({
@@ -25,18 +24,13 @@ function RoadUI({
   gameActive,
   onLaneClick,
   hideWall,
-  // highlightLane,
+  showCashout,
 }: RoadUIProps) {
+
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
 
-  // If the hen is currently at lane X, the "next" lane is X+1, and only that should be clickable
   const isClickable = gameActive && laneIndex === currentLane + 1;
-
-  // If you still want the text color logic for the "next" lane:
-  const isNextLane = isClickable; // same condition
-  // e.g. text is white if it's the next lane
-  // (Or you can keep your old logic `laneIndex === currentLane + 1 && currentLane >= 0 && gameActive`)
 
   const handleClick = () => {
     setCoinFaded(true);
@@ -58,43 +52,46 @@ function RoadUI({
       `}
       style={{
         minWidth: "155px",
-        // Only enable pointer events if this lane is clickable
         pointerEvents: isClickable ? "auto" : "none",
       }}
       onClick={isClickable ? handleClick : undefined}
     >
       <div className="relative flex items-center justify-center">
-        {/* Wall (if hideWall is false) */}
         {!hideWall && (
           <img
             src={wallImg}
             alt="Wall"
-            className={`wall-img ${wallFalling ? "fall" : ""}`}
+            className={`wall-img ${wallFalling ? "fall" : ""}  ${laneIndex === multipliers.length && showCashout
+              ? "hidden"
+              : ""
+              } `}
           />
         )}
-
         <img
           src={CoinImg}
           alt="Coin"
-          className={`coin-img ${
-            coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
-          }`}
+          className={`coin-img ${coinFaded ? "fade-out" : "hover:scale-110 transition-transform"}`}
         />
         <span
-          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${
-            isNextLane ? "text-white" : "text-gray-500"
-          }`}
+          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""
+            } ${isClickable ? "text-white" : "text-gray-500"}`}
         >
           {value.toFixed(2)}x
         </span>
       </div>
+      <div
+        className={`absolute px-6 py-2 bg-[#32de84] border-2 border-white rounded-xl 
+    ${laneIndex === multipliers.length && showCashout
+            ? "animate-flyUp"
+            : "hidden"
+          }`}
+      >
+        $ {value}
+      </div>
 
-      {/* If you have highlight logic, you can add it here, e.g.:
-      {highlightLane === laneIndex && (
-        <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs z-10">
-          Max Potential
-        </div>
-      )} */}
+      <div className="crashicon hidden   font-[500] px-6 py-2 bg-[#EE4B2B] border-2 border-white rounded-xl">
+        $ {value}
+      </div>
     </div>
   );
 }
