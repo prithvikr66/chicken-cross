@@ -36,7 +36,7 @@ const GameUI: React.FC<GameUIProps> = ({
   setCurrentLane,
 }) => {
   const roadWidth = 155;
- 
+
   // (existing states, etc.)
   const [targetLane, setTargetLane] = useState<number | null>(null);
   const [forceCrashCar, setForceCrashCar] = useState(false);
@@ -105,16 +105,17 @@ const GameUI: React.FC<GameUIProps> = ({
 
           // HERE: Show the cashout div in the last lane
           setShowLastLaneCashout(true);
-
+          const isMobile = window.innerWidth <= 768;
+          const rightBgElement = document.getElementById(`right-bg-road`);
+          if (rightBgElement)
+            rightBgElement.scrollIntoView({
+              behavior: "smooth",
+              block: "nearest",
+              inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
+            });
+          setTimeout(() => window.location.reload(), 2000);
         }
-        const isMobile = window.innerWidth <= 768;
-        const rightBgElement = document.getElementById(`right-bg-road`);
-        if (rightBgElement)
-          rightBgElement.scrollIntoView({
-            behavior: "smooth",
-            block: "nearest",
-            inline: isMobile ? "end" : "center", // Use "end" for mobile, "center" for larger screens
-          });
+
       }
 
       setTargetLane(null);
