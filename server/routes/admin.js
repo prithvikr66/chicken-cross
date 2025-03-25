@@ -14,7 +14,7 @@ router.get("/pending-withdrawals", async (req, res) => {
       .from("transactions")
       .select("*")
       .eq("transaction_type", "withdrawal")
-      .eq("status", "pending");
+      .or("status.eq.pending,status.eq.failed");
 
     if (error) {
       console.error("Error fetching pending withdrawals:", error);
@@ -51,7 +51,9 @@ router.post("/completed-transactions", async (req, res) => {
 
       if (fetchError || !transactionData) {
         console.error("Error fetching transaction details:", fetchError);
-        return res.status(500).json({ error: "Failed to fetch transaction details" });
+        return res
+          .status(500)
+          .json({ error: "Failed to fetch transaction details" });
       }
 
       const { amount, wallet_address } = transactionData;
@@ -67,7 +69,9 @@ router.post("/completed-transactions", async (req, res) => {
 
         if (userError || !userData) {
           console.error("Error fetching user details:", userError);
-          return res.status(500).json({ error: "Failed to fetch user details" });
+          return res
+            .status(500)
+            .json({ error: "Failed to fetch user details" });
         }
 
         const currentBalance = userData.account_balance;
@@ -81,7 +85,9 @@ router.post("/completed-transactions", async (req, res) => {
 
         if (updateBalanceError) {
           console.error("Error updating user balance:", updateBalanceError);
-          return res.status(500).json({ error: "Failed to update user balance" });
+          return res
+            .status(500)
+            .json({ error: "Failed to update user balance" });
         }
       }
 
@@ -93,12 +99,16 @@ router.post("/completed-transactions", async (req, res) => {
 
       if (updateError) {
         console.error("Error updating transaction:", updateError);
-        return res.status(500).json({ error: "Failed to update transaction status" });
+        return res
+          .status(500)
+          .json({ error: "Failed to update transaction status" });
       }
     }
 
     // Return success response
-    res.status(200).json({ success: true, message: "Transactions updated successfully" });
+    res
+      .status(200)
+      .json({ success: true, message: "Transactions updated successfully" });
   } catch (err) {
     console.error("Error in /api/admin/completed-transactions route:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -117,7 +127,9 @@ router.get("/completed-withdrawals", async (req, res) => {
 
     if (error) {
       console.error("Error fetching completed withdrawals:", error);
-      return res.status(500).json({ error: "Failed to fetch completed withdrawals" });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch completed withdrawals" });
     }
 
     // Return the list of completed withdrawals
@@ -147,10 +159,15 @@ router.get("/dashboard-metrics", async (req, res) => {
 
     if (wageredError) {
       console.error("Error fetching total amount wagered:", wageredError);
-      return res.status(500).json({ error: "Failed to fetch total amount wagered" });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch total amount wagered" });
     }
 
-    const totalWagered = totalWageredData.reduce((sum, bet) => sum + bet.bet_amount, 0);
+    const totalWagered = totalWageredData.reduce(
+      (sum, bet) => sum + bet.bet_amount,
+      0
+    );
 
     // Step 3: Fetch total lost by players
     const { data: totalLostData, error: lostError } = await supabase
@@ -159,7 +176,9 @@ router.get("/dashboard-metrics", async (req, res) => {
 
     if (lostError) {
       console.error("Error fetching total lost by players:", lostError);
-      return res.status(500).json({ error: "Failed to fetch total lost by players" });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch total lost by players" });
     }
 
     const totalLost = totalLostData
@@ -173,27 +192,16 @@ router.get("/dashboard-metrics", async (req, res) => {
 
     if (wonError) {
       console.error("Error fetching total won by players:", wonError);
-      return res.status(500).json({ error: "Failed to fetch total won by players" });
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch total won by players" });
     }
 
     const totalWon = totalWonData
       .filter((bet) => bet.cash_out_lane < bet.crash_lane) // Won bets
       .reduce((sum, bet) => sum + bet.payout, 0);
 
-    // Step 5: Fetch house balance
-    // const { data: houseBalanceData, error: houseBalanceError } = await supabase
-    //   .from("house_wallet")
-    //   .select("balance")
-    //   .single();
 
-    // if (houseBalanceError || !houseBalanceData) {
-    //   console.error("Error fetching house balance:", houseBalanceError);
-    //   return res.status(500).json({ error: "Failed to fetch house balance" });
-    // }
-
-    // const houseBalance = houseBalanceData.balance;
-
-    // Step 6: Fetch total withdrawn
     const { data: totalWithdrawnData, error: withdrawnError } = await supabase
       .from("transactions")
       .select("amount")
@@ -205,20 +213,48 @@ router.get("/dashboard-metrics", async (req, res) => {
       return res.status(500).json({ error: "Failed to fetch total withdrawn" });
     }
 
-    const totalWithdrawn = totalWithdrawnData.reduce((sum, tx) => sum + Math.abs(tx.amount), 0);
+    const totalWithdrawn = totalWithdrawnData.reduce(
+      (sum, tx) => sum + Math.abs(tx.amount),
+      0
+    );
 
-    const { count: pendingWithdrawalsCount, error: pendingError } = await supabase
-  .from("transactions")
-  .select("*", { count: "exact", head: true }) // Fetch only the count
-  .eq("transaction_type", "withdrawal")
-  .eq("status", "pending");
+    let { count: pendingWithdrawalsCount, error: pendingError } = await supabase
+      .from("transactions")
+      .select("*", { count: "exact", head: true }) // Fetch only the count
+      .eq("transaction_type", "withdrawal")
+      .eq("status", "pending");
 
-if (pendingError) {
-  console.error("Error fetching pending withdrawals:", pendingError);
-  return res.status(500).json({ error: "Failed to fetch pending withdrawals" });
-}
+    if (pendingError) {
+      console.error("Error fetching pending withdrawals:", pendingError);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch pending withdrawals" });
+    }
+    pendingWithdrawalsCount = pendingWithdrawalsCount || 0;
 
-const pendingWithdrawals = pendingWithdrawalsCount || 0;
+    const { data: pendingWithdrawalsData, error: pendingSolError } =
+      await supabase
+        .from("transactions")
+        .select("amount")
+        .eq("transaction_type", "withdrawal")
+        .eq("status", "pending");
+
+    if (pendingSolError) {
+      console.error("Error fetching pending withdrawals:", pendingError);
+      return res
+        .status(500)
+        .json({ error: "Failed to fetch pending withdrawals" });
+    }
+
+    const pendingWithdrawals = pendingWithdrawalsData.reduce(
+      (sum, tx) => sum + Math.abs(tx.amount),
+      0
+    );
+
+    const { data, error } = await supabase
+    .from("house_balance")
+    .select("balance")
+    .single();
 
     // Step 8: Return the dashboard metrics
     res.status(200).json({
@@ -228,14 +264,85 @@ const pendingWithdrawals = pendingWithdrawalsCount || 0;
         totalWagered,
         totalLost,
         totalWon,
-        houseBalance:10,
+        houseBalance:data.balance,
         totalWithdrawn,
         pendingWithdrawals,
+        pendingWithdrawalsCount,
       },
     });
   } catch (err) {
     console.error("Error in /api/admin/dashboard-metrics route:", err);
     res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.put("/house-balance", async (req, res) => {
+  const { newBalance } = req.body;
+
+  // Validate input
+  if (typeof newBalance !== "number" || newBalance < 0) {
+    return res.status(400).json({ error: "Invalid balance value" });
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("house_balance")
+      .update({
+        balance: newBalance,
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", true)
+      .select("balance")
+      .single();
+
+    if (error) throw error;
+
+    res.status(200).json({
+      success: true,
+      newBalance: data.balance,
+    });
+  } catch (err) {
+    console.error("House balance update error:", err);
+    res.status(500).json({ error: "Failed to update house balance" });
+  }
+});
+
+router.get('/history', async (req, res) => {
+  try {
+    const { data: transactions, error } = await supabase
+      .from('transactions')
+      .select('*')
+      .eq('transaction_type', 'withdrawal')
+      .eq('status', 'successful')
+      .order('updated_at', { ascending: false });
+
+    if (error) throw error;
+
+    // 2. Group transactions by admin and timestamp (5-minute window)
+    const grouped = transactions.reduce((groups, tx) => {
+      const key = `${tx.signed_by}-${Math.floor(new Date(tx.updated_at).getTime() / (5 * 60 * 1000))}`;
+      
+      if (!groups[key]) {
+        groups[key] = {
+          signed_by: tx.signed_by,
+          signed_at: tx.updated_at,
+          transactions: []
+        };
+      }
+      
+      groups[key].transactions.push(tx);
+      return groups;
+    }, {});
+
+    // 3. Convert to array and sort newest first
+    const result = Object.values(grouped)
+      .sort((a, b) => new Date(b.signed_at) - new Date(a.signed_at));
+
+    res.status(200).json({ groups: result });
+    
+  } catch (err) {
+    console.error('Failed to fetch grouped withdrawals:', err);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
