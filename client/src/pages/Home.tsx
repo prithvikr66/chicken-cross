@@ -67,7 +67,7 @@ export function Home({ onPageChange }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
-  useExitHandler(seedPairId, Number(betAmount),currentLane);
+  useExitHandler(seedPairId, Number(betAmount), currentLane);
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -141,6 +141,7 @@ export function Home({ onPageChange }: HomeProps) {
     }
     if (balance !== null && bet > balance) {
       setError("Insufficient balance.");
+      setButtonState('start_loading')
       return;
     }
 
@@ -181,7 +182,7 @@ export function Home({ onPageChange }: HomeProps) {
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
-            (err.response?.data?.error || err.message)
+          (err.response?.data?.error || err.message)
         );
         // Return to default if error
         setButtonState("start_default");
@@ -198,26 +199,32 @@ export function Home({ onPageChange }: HomeProps) {
     const token = localStorage.getItem("authToken");
     if (!token) return;
     if (buttonState === "cashout_enabled") {
+      // for cashout 
       if (parseFloat(betAmount) > 0) {
         const response = await axios.post(
           `${API_URL}/api/seeds/retire`,
           { seedPairId, betAmount: parseFloat(betAmount), currentLane },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        setBalance(response.data.newBalance)
+        if (response) {
+          setBalance(response.data.newBalance)
+          setGameActive(false);
+          setClientSeed("");
+          setSeedPairId("");
+          setServerSeedHash("");
+          setEncryptedCrashLane(undefined);
+          setNonce("");
+          setKeyPair(null);
+          setTimeout(() => window.location.reload(), 2000);
+          setButtonState("cashout_disabled");
+        }
+      } else {
+        // demo for cash out
+        setButtonState("cashout_disabled");
+        setTimeout(() => window.location.reload(), 1000);
       }
-
-      // reset
-      setGameActive(false);
-      setClientSeed("");
-      setSeedPairId("");
-      setServerSeedHash("");
-      setEncryptedCrashLane(undefined);
-      setNonce("");
-      setKeyPair(null);
-      window.location.reload();
-      setButtonState("cashout_disabled");
     } else {
+      // for Start of game
       if (!seedPairId) {
         setError("No seed pair available. Please adjust bet/difficulty first.");
         return;
@@ -237,7 +244,7 @@ export function Home({ onPageChange }: HomeProps) {
   };
 
   const handleCrashComplete = async () => {
-    setGameActive(false)
+    // setGameActive(false)
     const token = localStorage.getItem("authToken");
     if (!token) return;
     if (!seedPairId) {
@@ -245,13 +252,16 @@ export function Home({ onPageChange }: HomeProps) {
       return;
     }
     if (parseFloat(betAmount) > 0) {
+      console.log("if called");
       const response = await axios.post(
         `${API_URL}/api/seeds/crash`,
         { seedPairId, betAmount: parseFloat(betAmount), crashLane },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      window.location.reload();
-    } else setTimeout(() => window.location.reload(), 2000);
+      if (response) {
+        window.location.reload();
+      }
+    }
   };
 
   // (D) End Game => calls /seeds/retire
@@ -498,11 +508,10 @@ export function Home({ onPageChange }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
-                              difficulty === level
-                                ? "bg-purple-500 text-white"
-                                : "bg-white/5 text-gray-400 hover:bg-white/10"
-                            }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
+                              ? "bg-purple-500 text-white"
+                              : "bg-white/5 text-gray-400 hover:bg-white/10"
+                              }`}
                             disabled={gameActive}
                           >
                             {level}
