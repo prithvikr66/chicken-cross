@@ -265,7 +265,6 @@ router.get("/active", async (req, res) => {
 });
 
 router.post("/retire", async (req, res) => {
-  console.log("retire api called!")
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 
@@ -289,10 +288,10 @@ router.post("/retire", async (req, res) => {
         .status(404)
         .json({ error: "Seed pair not found or already retired" });
     }
-
+    
     let payoutMultiplier =
       cashOutLane && cashOutLane <= seedPair.multipliers.length
-        ? seedPair.multipliers[cashOutLane - 1]
+        ? seedPair.multipliers[cashOutLane]
         : 0;
     const payout = betAmount * payoutMultiplier;
 
@@ -414,7 +413,6 @@ router.post("/gamestart", async (req, res) => {
 });
 
 router.post("/crash", async (req, res) => { 
-  console.log("crash api called")
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
 

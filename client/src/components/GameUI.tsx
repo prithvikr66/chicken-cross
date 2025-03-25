@@ -15,6 +15,9 @@ interface GameUIProps {
   nonce: string;
   gameActive: boolean;
   onFirstLaneClick?: () => void;
+  onCashOut?: (cashOutLane: number) => void;
+  onGameEnd?: () => void;
+  onGameCrash?: (crashLane: number) => void
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -24,6 +27,9 @@ const GameUI: React.FC<GameUIProps> = ({
   encryptedCrashLane,
   gameActive,
   onFirstLaneClick,
+  onCashOut,
+  onGameEnd,
+  onGameCrash
 }) => {
   const roadWidth = 155;
 
@@ -39,7 +45,7 @@ const GameUI: React.FC<GameUIProps> = ({
   // Ref for the lanes container so we can auto-scroll
   const lanesContainerRef = useRef<HTMLDivElement>(null);
 
-  // On receiving crash lane from server
+  // // On receiving crash lane from server
   useEffect(() => {
     if (encryptedCrashLane !== undefined) {
       setCrashLane(encryptedCrashLane);
@@ -89,13 +95,16 @@ const GameUI: React.FC<GameUIProps> = ({
   const handleMoveComplete = () => {
     if (targetLane !== null) {
       setCurrentLane(targetLane);
-
+      if (onCashOut) {
+        onCashOut(currentLane);
+      }
       if (crashLane && targetLane === crashLane) {
         setForceCrashCar(true);
       } else {
         // If user is on the last lane & it's not crash => exit screen
         if (targetLane === multipliers.length && crashLane !== multipliers.length) {
           setHenExiting(true);
+          if (onGameEnd) onGameEnd();
         }
         const isMobile = window.innerWidth <= 768;
         const rightBgElement = document.getElementById(`right-bg-road`);
@@ -125,6 +134,7 @@ const GameUI: React.FC<GameUIProps> = ({
 
   // Crash Car passes => cock dead
   const handleCrashPass = () => {
+    if (onGameCrash && crashLane) onGameCrash(crashLane);
     setCockDead(true);
   };
 

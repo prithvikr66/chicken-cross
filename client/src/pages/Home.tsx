@@ -57,7 +57,7 @@ export function Home({ onPageChange }: HomeProps) {
 
   // Track if /create is in-flight
   const [isCreating, setIsCreating] = useState(false);
-
+  const [cashOutLane, setCashOutLane] = useState<number>(0);
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   const [buttonState, setButtonState] = useState<
@@ -126,36 +126,36 @@ export function Home({ onPageChange }: HomeProps) {
 
     const timer = setTimeout(async () => {
       // We'll disable the button if we are loading
-      setIsCreating(true);
-      // While we are in flight => buttonState => "start_loading"
-      setButtonState("start_loading");
-
       try {
-        const randomBytes = new Uint8Array(16);
-        window.crypto.getRandomValues(randomBytes);
-        const newClientSeed = `ChickenCross-${Array.from(randomBytes)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")}-${Date.now()}`;
-        setClientSeed(newClientSeed);
-
-        const newKeyPair = nacl.box.keyPair();
-        setKeyPair(newKeyPair);
-
-        const response = await axios.post(
-          `${API_URL}/api/seeds/create`,
-          { clientSeed: newClientSeed, difficulty, betAmount: bet },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        setSeedPairId(response.data.seedPairId);
-        setServerSeedHash(response.data.serverSeedHash);
-        setEncryptedCrashLane(response.data.encryptedCrashLane);
-        // setEncryptedCrashLane(14);
-        setNonce(response.data.nonce);
-        setError("");
-
-        // If successful, and the game is not started, we return to the "start_default" state
         if (!gameActive) {
+          setIsCreating(true);
+          // While we are in flight => buttonState => "start_loading"      
+          setButtonState("start_loading");
+          const randomBytes = new Uint8Array(16);
+          window.crypto.getRandomValues(randomBytes);
+          const newClientSeed = `ChickenCross-${Array.from(randomBytes)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("")}-${Date.now()}`;
+          setClientSeed(newClientSeed);
+
+          const newKeyPair = nacl.box.keyPair();
+          setKeyPair(newKeyPair);
+
+          const response = await axios.post(
+            `${API_URL}/api/seeds/create`,
+            { clientSeed: newClientSeed, difficulty, betAmount: bet },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          setSeedPairId(response.data.seedPairId);
+          setServerSeedHash(response.data.serverSeedHash);
+          // setEncryptedCrashLane(response.data.encryptedCrashLane);
+          setEncryptedCrashLane(14);
+          setNonce(response.data.nonce);
+          setError("");
+
+          // If successful, and the game is not started, we return to the "start_default" state
+
           setButtonState("start_default");
         }
       } catch (err: any) {
@@ -163,7 +163,6 @@ export function Home({ onPageChange }: HomeProps) {
           "Failed to create seed pair: " +
           (err.response?.data?.error || err.message)
         );
-        // Return to default if error
         setButtonState("start_default");
       } finally {
         setIsCreating(false);
@@ -173,56 +172,62 @@ export function Home({ onPageChange }: HomeProps) {
     return () => clearTimeout(timer);
   }, [betAmount, difficulty, publicKey, balance]);
 
-  // (C) Start Game => user clicks => switch to "cashout_disabled"
-  const handleStartGame = () => {
+  const handleCashOut = (cashOutLane: number) => {
+    setCashOutLane(cashOutLane)
+  }
+  const handleStartGame = async () => {
     if (buttonState === "cashout_enabled") {
-      console.log("cashout enabled called");
+      const token = localStorage.getItem("authToken");
       setButtonState("cashout_disabled")
-    } else {
-      if (!seedPairId) {
-        setError("No seed pair available. Please adjust bet/difficulty first.");
-        return;
-      }
-      setGameActive(true);
-      setError("");
-      // Once the user clicks => "Cash Out" with grey bg => disabled
-      setButtonState("cashout_disabled");
-    }
-  };
-
-  // (D) End Game => calls /seeds/retire
-  const handleEndGame = async (cashOutLane?: number) => {
-    if (!seedPairId) return;
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-
-    try {
+      setGameActive(false)
       const response = await axios.post(
         `${API_URL}/api/seeds/retire`,
         { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-
-      // update balance if bet > 0
-      if (parseFloat(betAmount) > 0) {
-        setBalance((prev) =>
-          prev !== null
-            ? prev - parseFloat(betAmount) + response.data.payout
-            : null
-        );
+      if (response) {
+        setTimeout(() => window.location.reload(), 5000);
       }
+    } else {
+      if (!seedPairId) {
+        setError("No seed pair available. Please adjust bet/difficulty first.");
+        return;
+      }
+      if (parseFloat(betAmount) > 0) {
+        const token = localStorage.getItem("authToken");
+        const response = await axios.post(
+          `${API_URL}/api/seeds/gamestart`,
+          { betAmount: betAmount },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setBalance(response.data.newBalance);
+      }
+      setGameActive(true);
+      setError("");
+      setButtonState("cashout_disabled");
+    }
+  };
 
-      // reset
+  // (D) End Game => calls /seeds/retire
+  const handleEndGame = async () => {
+    if (!seedPairId) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+
+    try {
+      setButtonState("cashout_disabled");
       setGameActive(false);
-      setClientSeed("");
-      setSeedPairId("");
-      setServerSeedHash("");
-      setEncryptedCrashLane(undefined);
-      setNonce("");
-      setKeyPair(null);
-
-      // Return to "Start Game" default
-      setButtonState("start_default");
+      if (parseFloat(betAmount) > 0) {
+        const response = await axios.post(
+          `${API_URL}/api/seeds/retire`,
+          { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (response)
+          setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setTimeout(() => window.location.reload(), 3000);
+      }
     } catch (err: any) {
       setError(
         "Failed to end game: " + (err.response?.data?.error || err.message)
@@ -243,9 +248,21 @@ export function Home({ onPageChange }: HomeProps) {
     setBetAmount((currentValue * multiplier).toFixed(3));
   };
 
+  const handleCrash = async (crashLane: number = 0) => {
+    if (!seedPairId) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    const response = await axios.post(
+      `${API_URL}/api/seeds/crash`,
+      { seedPairId, betAmount: parseFloat(betAmount), crashLane },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (response) {
+      setTimeout(() => window.location.reload(), 3000)
+    }
+  }
   // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
   const handleFirstLaneClick = () => {
-    // Only change if we're in the "cashout_disabled" state
     if (buttonState === "cashout_disabled") {
       setButtonState("cashout_enabled");
     }
@@ -331,7 +348,7 @@ export function Home({ onPageChange }: HomeProps) {
 
       {/* Main content */}
       <div className=" ">
-        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
+        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5   ">
           {initialLoading ? (
             <div className="  w-full h-screen flex justify-center items-center ">
               <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -347,7 +364,10 @@ export function Home({ onPageChange }: HomeProps) {
                   multipliers={multipliers}
                   encryptedCrashLane={encryptedCrashLane}
                   nonce={nonce}
+                  onCashOut={handleCashOut}
                   gameActive={gameActive}
+                  onGameEnd={handleEndGame}
+                  onGameCrash={handleCrash}
                   onFirstLaneClick={handleFirstLaneClick}
                 />
               </div>
