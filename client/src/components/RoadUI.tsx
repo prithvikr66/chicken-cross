@@ -11,7 +11,12 @@ interface RoadUIProps {
   multipliers: number[];
   onLaneClick: (laneIndex: number) => void;
   hideWall?: boolean;
-  showCashout?: boolean;
+  ifCashOut?: {
+    ifCashOut: boolean;
+    cashOutLane: number;
+    crashLane: number;
+  };
+  showGameEnd?: boolean;
 }
 
 function RoadUI({
@@ -21,11 +26,10 @@ function RoadUI({
   multipliers,
   gameActive,
   onLaneClick,
+  ifCashOut,
   hideWall,
-  showCashout,
+  showGameEnd,
 }: RoadUIProps) {
-
-
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
 
@@ -69,7 +73,7 @@ function RoadUI({
             src={wallImg}
             alt="Wall"
             className={`wall-img ${wallFalling ? "fall" : ""} 
-            ${laneIndex === multipliers.length && showCashout
+            ${(laneIndex === multipliers.length && showGameEnd) || (ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1)
                 ? "hidden"
                 : ""
               } `}
@@ -79,7 +83,8 @@ function RoadUI({
         <img
           src={CoinImg}
           alt="Coin"
-          className={`coin-img ${coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
+          className={`coin-img  ${ifCashOut?.ifCashOut && (ifCashOut?.crashLane - 1 === laneIndex) ? "hidden" : "block"}
+           ${coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
             }`}
         />
         <span
@@ -90,8 +95,8 @@ function RoadUI({
         </span>
       </div>
       <div
-        className={`cashout absolute px-6 py-2 bg-[#32de84] border-2 border-white rounded-xl
-          ${laneIndex === multipliers.length && showCashout
+        className={`gameend absolute px-6 py-2 bg-[#32de84] border-2 border-white rounded-xl
+          ${laneIndex === multipliers.length && showGameEnd
             ? "animate-flyUp"
             : "hidden"
           }
@@ -99,7 +104,17 @@ function RoadUI({
       >
         $ {value}
       </div>
-      <div className=" crashicon hidden font-[500]  px-6 py-2 bg-[#EE4B2B] border-2  border-white rounded-xl ">
+      <div
+        className={`gameend absolute px-6 py-2 bg-[#32de84] border-2 border-white rounded-xl
+          ${ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1
+            ? "animate-flyUp"
+            : "hidden"
+          }
+        `}
+      >
+        $ {value}
+      </div>
+      <div className={` ${ifCashOut?.ifCashOut && (ifCashOut?.crashLane - 1 === laneIndex) ? "block" : "hidden"} absolute crashicon  font-[500]  px-6 py-2 bg-[#EE4B2B] border-2  border-white rounded-xl `}>
         $ {value}
       </div>
     </div>

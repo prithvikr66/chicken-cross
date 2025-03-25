@@ -58,6 +58,8 @@ export function Home({ onPageChange }: HomeProps) {
   // Track if /create is in-flight
   const [isCreating, setIsCreating] = useState(false);
   const [cashOutLane, setCashOutLane] = useState<number>(0);
+  const [ifCashOut, setIfCashOut] = useState({ ifCashOut: false, cashOutLane: 0, crashLane: 0 });
+
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   const [buttonState, setButtonState] = useState<
@@ -149,8 +151,8 @@ export function Home({ onPageChange }: HomeProps) {
 
           setSeedPairId(response.data.seedPairId);
           setServerSeedHash(response.data.serverSeedHash);
-          // setEncryptedCrashLane(response.data.encryptedCrashLane);
-          setEncryptedCrashLane(18);
+          setEncryptedCrashLane(response.data.encryptedCrashLane);
+          // setEncryptedCrashLane(1);
           setNonce(response.data.nonce);
           setError("");
 
@@ -178,6 +180,8 @@ export function Home({ onPageChange }: HomeProps) {
   const handleStartGame = async () => {
     if (buttonState === "cashout_enabled") {
       const token = localStorage.getItem("authToken");
+      if (encryptedCrashLane)
+        setIfCashOut({ ifCashOut: true, cashOutLane: cashOutLane, crashLane: encryptedCrashLane })
       setButtonState("cashout_disabled")
       setGameActive(false)
       const response = await axios.post(
@@ -186,7 +190,7 @@ export function Home({ onPageChange }: HomeProps) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       if (response) {
-        setTimeout(() => window.location.reload(), 5000);
+        setTimeout(() => window.location.reload(), 2000);
       }
     } else {
       if (!seedPairId) {
@@ -252,6 +256,7 @@ export function Home({ onPageChange }: HomeProps) {
     if (!seedPairId) return;
     const token = localStorage.getItem("authToken");
     if (!token) return;
+    setButtonState("cashout_disabled");
     const response = await axios.post(
       `${API_URL}/api/seeds/crash`,
       { seedPairId, betAmount: parseFloat(betAmount), crashLane },
@@ -358,6 +363,7 @@ export function Home({ onPageChange }: HomeProps) {
               {/* The actual game UI */}
               <div className=" gameui lg:rounded-xl overflow-x-auto">
                 <GameUI
+                  ifCashOut={ifCashOut}
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
                   seedPairId={seedPairId}

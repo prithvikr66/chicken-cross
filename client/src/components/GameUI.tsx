@@ -17,7 +17,12 @@ interface GameUIProps {
   onFirstLaneClick?: () => void;
   onCashOut?: (cashOutLane: number) => void;
   onGameEnd?: () => void;
-  onGameCrash?: (crashLane: number) => void
+  onGameCrash?: (crashLane: number) => void;
+  ifCashOut?: {
+    ifCashOut: boolean;
+    cashOutLane: number;
+    crashLane: number;
+  };
 }
 
 const GameUI: React.FC<GameUIProps> = ({
@@ -29,7 +34,8 @@ const GameUI: React.FC<GameUIProps> = ({
   onFirstLaneClick,
   onCashOut,
   onGameEnd,
-  onGameCrash
+  onGameCrash,
+  ifCashOut
 }) => {
   const roadWidth = 155;
 
@@ -96,6 +102,7 @@ const GameUI: React.FC<GameUIProps> = ({
     if (targetLane !== null) {
       setCurrentLane(targetLane);
       if (onCashOut) {
+
         onCashOut(currentLane);
       }
       if (crashLane && targetLane === crashLane) {
@@ -173,7 +180,8 @@ const GameUI: React.FC<GameUIProps> = ({
               currentLane={currentLane}
               onLaneClick={handleLaneClick}
               hideWall={crashLane === index + 1}
-              showCashout={showLastLaneCashout && index + 1 === multipliers.length}
+              ifCashOut={ifCashOut}
+              showGameEnd={showLastLaneCashout && index + 1 === multipliers.length}
             />
           ))}
         </div>
