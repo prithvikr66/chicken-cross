@@ -11,10 +11,7 @@ interface RoadUIProps {
   multipliers: number[];
   onLaneClick: (laneIndex: number) => void;
   hideWall?: boolean;
-
-  // If you previously added highlight logic, e.g. highlightLane?: number | null;
-  // you can keep that here, or remove if not needed:
-  // highlightLane?: number | null;
+  showCashout?: boolean;
 }
 
 function RoadUI({
@@ -25,8 +22,10 @@ function RoadUI({
   gameActive,
   onLaneClick,
   hideWall,
-  // highlightLane,
+  showCashout,
 }: RoadUIProps) {
+
+
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
 
@@ -69,32 +68,40 @@ function RoadUI({
           <img
             src={wallImg}
             alt="Wall"
-            className={`wall-img ${wallFalling ? "fall" : ""}`}
+            className={`wall-img ${wallFalling ? "fall" : ""} 
+            ${laneIndex === multipliers.length && showCashout
+                ? "hidden"
+                : ""
+              } `}
           />
         )}
 
         <img
           src={CoinImg}
           alt="Coin"
-          className={`coin-img ${
-            coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
-          }`}
+          className={`coin-img ${coinFaded ? "fade-out" : "hover:scale-110 transition-transform"
+            }`}
         />
         <span
-          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${
-            isNextLane ? "text-white" : "text-gray-500"
-          }`}
+          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${isNextLane ? "text-white" : "text-gray-500"
+            }`}
         >
           {value.toFixed(2)}x
         </span>
       </div>
-
-      {/* If you have highlight logic, you can add it here, e.g.:
-      {highlightLane === laneIndex && (
-        <div className="absolute top-2 left-2 bg-red-600 text-white px-2 py-1 rounded text-xs z-10">
-          Max Potential
-        </div>
-      )} */}
+      <div
+        className={`cashout absolute px-6 py-2 bg-[#32de84] border-2 border-white rounded-xl
+          ${laneIndex === multipliers.length && showCashout
+            ? "animate-flyUp"
+            : "hidden"
+          }
+        `}
+      >
+        $ {value}
+      </div>
+      <div className=" crashicon hidden font-[500]  px-6 py-2 bg-[#EE4B2B] border-2  border-white rounded-xl ">
+        $ {value}
+      </div>
     </div>
   );
 }

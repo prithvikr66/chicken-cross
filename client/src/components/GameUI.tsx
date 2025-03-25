@@ -44,7 +44,7 @@ const GameUI: React.FC<GameUIProps> = ({
   const [henExiting, setHenExiting] = useState(false);
   // Ref for the lanes container so we can auto-scroll
   const lanesContainerRef = useRef<HTMLDivElement>(null);
-
+  const [showLastLaneCashout, setShowLastLaneCashout] = useState(false);
   // // On receiving crash lane from server
   useEffect(() => {
     if (encryptedCrashLane !== undefined) {
@@ -104,6 +104,7 @@ const GameUI: React.FC<GameUIProps> = ({
         // If user is on the last lane & it's not crash => exit screen
         if (targetLane === multipliers.length && crashLane !== multipliers.length) {
           setHenExiting(true);
+          setShowLastLaneCashout(true);
           if (onGameEnd) onGameEnd();
         }
         const isMobile = window.innerWidth <= 768;
@@ -172,6 +173,7 @@ const GameUI: React.FC<GameUIProps> = ({
               currentLane={currentLane}
               onLaneClick={handleLaneClick}
               hideWall={crashLane === index + 1}
+              showCashout={showLastLaneCashout && index + 1 === multipliers.length}
             />
           ))}
         </div>
