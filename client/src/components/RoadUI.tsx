@@ -86,23 +86,23 @@ function RoadUI({
       </div>
 
       {!hideWall && (
-          <img
-            src={wallImg}
-            alt="Wall"
-            className={`wall-img mt-[60%]  ${wallFalling ? "fall" : ""} 
+        <img
+          src={wallImg}
+          alt="Wall"
+          className={`wall-img mt-[65%] lg:mt-[80%]  ${laneIndex <= currentLane ? "fall" : ""} 
             ${(laneIndex === multipliers.length && showGameEnd) || (ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1)
-                ? "hidden"
-                : ""
-              } `}
-          />
-        )}
+              ? "hidden"
+              : ""
+            } `}
+        />
+      )}
       <img
-          src={ClaimedCoinImg}
-          className={` 
+        src={ClaimedCoinImg}
+        className={` 
     ${laneIndex <= currentLane - 1 ? "animate-bounce mt-[40%] lg:mt-[40%] " : "hidden"}
   `}
-          alt=""
-        />
+        alt=""
+      />
       <div
         className={`gameend absolute px-3 py-1 bg-[#32de84] border-2 border-white rounded-xl
           ${laneIndex === multipliers.length && showGameEnd

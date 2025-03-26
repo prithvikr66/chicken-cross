@@ -53,7 +53,7 @@ function CockUi({
     if (cockDead) {
       let currentFrame = 1;
       const deadImages = [DeadCockImg1, DeadCockImg2, DeadCockImg3, DeadCockImg4];
-      
+
       const interval = setInterval(() => {
         setCurrentImage(deadImages[currentFrame - 1]);
         currentFrame++;
@@ -138,20 +138,20 @@ function CockUi({
         />
 
         {/* Multiplier displayed directly below the hen */}
-        {!cockDead && (
-          currentLane > 0 && multipliers[currentLane] ? (
+        {
+          currentLane > 0 && multipliers[currentLane] && !cockDead ? (
             <div className="z-20 text-center bg-[#171C4C] text-white rounded-xl p-2 mt-2">
               {multipliers[currentLane - 1].toFixed(2)}x
             </div>
           ) : (
             <div
               className="z-20 text-center text-white rounded-xl p-2 mt-2"
-              style={{ backgroundColor: 'transparent', opacity: 0 }}
+              style={{ backgroundColor: 'transparent',opacity:0 }}
             >
               x
             </div>
           )
-        )}
+        }
       </div>
     </div>
   );
