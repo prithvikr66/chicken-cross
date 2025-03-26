@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from "react";
 import CockImg from "../assets/standing_clock.svg";
 import CockMovingImg1 from "../assets/cock_walk_1.svg";
 import CockMovingImg2 from "../assets/cock_walk_2.svg";
-import DeadCockImg from "../assets/dead_cock.svg";
+import DeadCockImg1 from "../assets/dead_cock.svg";
+import DeadCockImg2 from "../assets/dead_cock_2.svg";
+import DeadCockImg3 from "../assets/dead_cock_3.svg";
+import DeadCockImg4 from "../assets/dead_cock_4.svg";
 
 interface CockUiProps {
   maxWidth: number;
@@ -48,8 +51,19 @@ function CockUi({
   // If hen is dead => show DeadCock
   useEffect(() => {
     if (cockDead) {
-      setCurrentImage(DeadCockImg);
-      setIsMoving(false);
+      let currentFrame = 1;
+      const deadImages = [DeadCockImg1, DeadCockImg2, DeadCockImg3, DeadCockImg4];
+
+      const interval = setInterval(() => {
+        setCurrentImage(deadImages[currentFrame - 1]);
+        currentFrame++;
+
+        if (currentFrame > deadImages.length) {
+          clearInterval(interval); // Stop the animation after the last frame
+        }
+      }, 300); // Change every 200ms (adjust to your desired speed)
+
+      return () => clearInterval(interval); // Cleanup interval on unmount or change
     }
   }, [cockDead]);
 
@@ -105,9 +119,8 @@ function CockUi({
 
   return (
     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-      <div className="absolute z-20 " style={{
+      <div className="absolute z-20 bottom-[15%] lg:bottom-[25%] " style={{
         left: `${position.left}px`,
-        bottom: "58px",
         transition: cockDead
           ? "none"
           : "left 0.8s cubic-bezier(0.33, 1, 0.68, 1)",
@@ -125,21 +138,20 @@ function CockUi({
         />
 
         {/* Multiplier displayed directly below the hen */}
-        {!cockDead && (
-          currentLane > 0 && multipliers[currentLane] ? (
+        {
+          currentLane > 0 && multipliers[currentLane] && !cockDead ? (
             <div className="z-20 text-center bg-[#171C4C] text-white rounded-xl p-2 mt-2">
               {multipliers[currentLane - 1].toFixed(2)}x
             </div>
           ) : (
             <div
               className="z-20 text-center text-white rounded-xl p-2 mt-2"
-              style={{ backgroundColor: 'transparent', opacity: 0 }}
+              style={{ backgroundColor: 'transparent',opacity:0 }}
             >
               x
             </div>
           )
-        )}
-
+        }
       </div>
     </div>
   );

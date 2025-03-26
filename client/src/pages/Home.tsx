@@ -5,15 +5,15 @@ import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
 import GameHistory from "../components/GameHistory";
-import useExitHandler from "../utils/useExitHandler";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
+  navigateToProfileWithModal: any;
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
 
-export function Home({ onPageChange }: HomeProps) {
+export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -51,8 +51,6 @@ export function Home({ onPageChange }: HomeProps) {
     "easy" | "medium" | "hard" | "daredevil"
   >("easy");
   const [balance, setBalance] = useState<number | null>(null);
-  const [crashLane, setCrashLane] = useState<number | null>(null);
-  const [currentLane, setCurrentLane] = useState<number>(0);
 
   // Error / loading
   const [error, setError] = useState("");
@@ -60,6 +58,12 @@ export function Home({ onPageChange }: HomeProps) {
 
   // Track if /create is in-flight
   const [isCreating, setIsCreating] = useState(false);
+  const [cashOutLane, setCashOutLane] = useState<number>(0);
+  const [ifCashOut, setIfCashOut] = useState({
+    ifCashOut: false,
+    cashOutLane: 0,
+    crashLane: 0,
+  });
 
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
@@ -67,7 +71,6 @@ export function Home({ onPageChange }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
-  useExitHandler(seedPairId, Number(betAmount), currentLane);
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -104,22 +107,6 @@ export function Home({ onPageChange }: HomeProps) {
     fetchInitialData();
   }, [publicKey]);
 
-  useEffect(() => {
-    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-      if (gameActive) {
-        event.preventDefault();
-        event.returnValue =
-          "You have an active game session. You will lose the bet on leaving!";
-      }
-    };
-
-    window.addEventListener("beforeunload", handleBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", handleBeforeUnload);
-    };
-  }, [gameActive]);
-
   // 2) If difficulty changes & no active game, switch multipliers
   useEffect(() => {
     if (!gameActive && allMultipliers) {
@@ -141,50 +128,48 @@ export function Home({ onPageChange }: HomeProps) {
     }
     if (balance !== null && bet > balance) {
       setError("Insufficient balance.");
-      setButtonState('start_loading')
       return;
     }
 
     const timer = setTimeout(async () => {
       // We'll disable the button if we are loading
-      setIsCreating(true);
-      // While we are in flight => buttonState => "start_loading"
-      setButtonState("start_loading");
-
       try {
-        const randomBytes = new Uint8Array(16);
-        window.crypto.getRandomValues(randomBytes);
-        const newClientSeed = `ChickenCross-${Array.from(randomBytes)
-          .map((b) => b.toString(16).padStart(2, "0"))
-          .join("")}-${Date.now()}`;
-        setClientSeed(newClientSeed);
-
-        const newKeyPair = nacl.box.keyPair();
-        setKeyPair(newKeyPair);
-
-        const response = await axios.post(
-          `${API_URL}/api/seeds/create`,
-          { clientSeed: newClientSeed, difficulty, betAmount: bet },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-
-        setSeedPairId(response.data.seedPairId);
-        setServerSeedHash(response.data.serverSeedHash);
-        setEncryptedCrashLane(response.data.encryptedCrashLane);
-        // setEncryptedCrashLane(14);
-        setNonce(response.data.nonce);
-        setError("");
-
-        // If successful, and the game is not started, we return to the "start_default" state
         if (!gameActive) {
+          setIsCreating(true);
+          // While we are in flight => buttonState => "start_loading"
+          setButtonState("start_loading");
+          const randomBytes = new Uint8Array(16);
+          window.crypto.getRandomValues(randomBytes);
+          const newClientSeed = `ChickenCross-${Array.from(randomBytes)
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("")}-${Date.now()}`;
+          setClientSeed(newClientSeed);
+
+          const newKeyPair = nacl.box.keyPair();
+          setKeyPair(newKeyPair);
+
+          const response = await axios.post(
+            `${API_URL}/api/seeds/create`,
+            { clientSeed: newClientSeed, difficulty, betAmount: bet },
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+
+          setSeedPairId(response.data.seedPairId);
+          setServerSeedHash(response.data.serverSeedHash);
+          setEncryptedCrashLane(response.data.encryptedCrashLane);
+          // setEncryptedCrashLane(4);
+          setNonce(response.data.nonce);
+          setError("");
+
+          // If successful, and the game is not started, we return to the "start_default" state
+
           setButtonState("start_default");
         }
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
-          (err.response?.data?.error || err.message)
+            (err.response?.data?.error || err.message)
         );
-        // Return to default if error
         setButtonState("start_default");
       } finally {
         setIsCreating(false);
@@ -194,42 +179,35 @@ export function Home({ onPageChange }: HomeProps) {
     return () => clearTimeout(timer);
   }, [betAmount, difficulty, publicKey, balance]);
 
-  // (C) Start Game => user clicks => switch to "cashout_disabled"
+  const handleCashOut = (cashOutLane: number) => {
+    setCashOutLane(cashOutLane);
+  };
   const handleStartGame = async () => {
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
     if (buttonState === "cashout_enabled") {
-      // for cashout 
-      if (parseFloat(betAmount) > 0) {
-        const response = await axios.post(
-          `${API_URL}/api/seeds/retire`,
-          { seedPairId, betAmount: parseFloat(betAmount), currentLane },
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        if (response) {
-          setBalance(response.data.newBalance)
-          setGameActive(false);
-          setClientSeed("");
-          setSeedPairId("");
-          setServerSeedHash("");
-          setEncryptedCrashLane(undefined);
-          setNonce("");
-          setKeyPair(null);
-          setTimeout(() => window.location.reload(), 2000);
-          setButtonState("cashout_disabled");
-        }
-      } else {
-        // demo for cash out
-        setButtonState("cashout_disabled");
-        setTimeout(() => window.location.reload(), 1000);
+      const token = localStorage.getItem("authToken");
+      if (encryptedCrashLane)
+        setIfCashOut({
+          ifCashOut: true,
+          cashOutLane: cashOutLane,
+          crashLane: encryptedCrashLane,
+        });
+      setButtonState("cashout_disabled");
+      setGameActive(false);
+      const response = await axios.post(
+        `${API_URL}/api/seeds/retire`,
+        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (response) {
+        setTimeout(() => window.location.reload(), 2000);
       }
     } else {
-      // for Start of game
       if (!seedPairId) {
         setError("No seed pair available. Please adjust bet/difficulty first.");
         return;
       }
       if (parseFloat(betAmount) > 0) {
+        const token = localStorage.getItem("authToken");
         const response = await axios.post(
           `${API_URL}/api/seeds/gamestart`,
           { betAmount: betAmount },
@@ -243,60 +221,25 @@ export function Home({ onPageChange }: HomeProps) {
     }
   };
 
-  const handleCrashComplete = async () => {
-    // setGameActive(false)
-    const token = localStorage.getItem("authToken");
-    if (!token) return;
-    if (!seedPairId) {
-      setError("No seed pair available. Please adjust bet/difficulty first.");
-      return;
-    }
-    if (parseFloat(betAmount) > 0) {
-      console.log("if called");
-      const response = await axios.post(
-        `${API_URL}/api/seeds/crash`,
-        { seedPairId, betAmount: parseFloat(betAmount), crashLane },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-      if (response) {
-        window.location.reload();
-      }
-    }
-  };
-
   // (D) End Game => calls /seeds/retire
-  const handleEndGame = async (cashOutLane?: number) => {
+  const handleEndGame = async () => {
     if (!seedPairId) return;
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
     try {
-      const response = await axios.post(
-        `${API_URL}/api/seeds/retire`,
-        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      // update balance if bet > 0
-      if (parseFloat(betAmount) > 0) {
-        setBalance((prev) =>
-          prev !== null
-            ? prev - parseFloat(betAmount) + response.data.payout
-            : null
-        );
-      }
-
-      // reset
+      setButtonState("cashout_disabled");
       setGameActive(false);
-      setClientSeed("");
-      setSeedPairId("");
-      setServerSeedHash("");
-      setEncryptedCrashLane(undefined);
-      setNonce("");
-      setKeyPair(null);
-
-      // Return to "Start Game" default
-      setButtonState("start_default");
+      if (parseFloat(betAmount) > 0) {
+        const response = await axios.post(
+          `${API_URL}/api/seeds/retire`,
+          { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        if (response) setTimeout(() => window.location.reload(), 3000);
+      } else {
+        setTimeout(() => window.location.reload(), 3000);
+      }
     } catch (err: any) {
       setError(
         "Failed to end game: " + (err.response?.data?.error || err.message)
@@ -317,9 +260,22 @@ export function Home({ onPageChange }: HomeProps) {
     setBetAmount((currentValue * multiplier).toFixed(3));
   };
 
+  const handleCrash = async (crashLane: number = 0) => {
+    if (!seedPairId) return;
+    const token = localStorage.getItem("authToken");
+    if (!token) return;
+    setButtonState("cashout_disabled");
+    const response = await axios.post(
+      `${API_URL}/api/seeds/crash`,
+      { seedPairId, betAmount: parseFloat(betAmount), crashLane },
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    if (response) {
+      setTimeout(() => window.location.reload(), 3000);
+    }
+  };
   // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
   const handleFirstLaneClick = () => {
-    // Only change if we're in the "cashout_disabled" state
     if (buttonState === "cashout_disabled") {
       setButtonState("cashout_enabled");
     }
@@ -346,7 +302,10 @@ export function Home({ onPageChange }: HomeProps) {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1">
+              <button
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                onClick={navigateToProfileWithModal}
+              >
                 <Plus className="w-4 h-4" />
                 <span>Deposit</span>
               </button>
@@ -407,7 +366,7 @@ export function Home({ onPageChange }: HomeProps) {
 
       {/* Main content */}
       <div className=" ">
-        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5 lg:rounded-2xl  ">
+        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5   ">
           {initialLoading ? (
             <div className="  w-full h-screen flex justify-center items-center ">
               <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -417,19 +376,18 @@ export function Home({ onPageChange }: HomeProps) {
               {/* The actual game UI */}
               <div className=" gameui lg:rounded-xl overflow-x-auto">
                 <GameUI
+                  ifCashOut={ifCashOut}
                   betAmount={parseFloat(betAmount)}
                   difficulty={difficulty}
                   seedPairId={seedPairId}
                   multipliers={multipliers}
                   encryptedCrashLane={encryptedCrashLane}
                   nonce={nonce}
+                  onCashOut={handleCashOut}
                   gameActive={gameActive}
+                  onGameEnd={handleEndGame}
+                  onGameCrash={handleCrash}
                   onFirstLaneClick={handleFirstLaneClick}
-                  crashLane={crashLane}
-                  setCrashLane={setCrashLane}
-                  handleCrashComplete={handleCrashComplete}
-                  currentLane={currentLane}
-                  setCurrentLane={setCurrentLane}
                 />
               </div>
 
@@ -508,10 +466,11 @@ export function Home({ onPageChange }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 text-gray-400 hover:bg-white/10"
-                              }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
+                              difficulty === level
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            }`}
                             disabled={gameActive}
                           >
                             {level}

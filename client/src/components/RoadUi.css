@@ -4,6 +4,10 @@
   transition: opacity 0.2s ease-out;
 }
 
+.font-outline-black {
+  -webkit-text-stroke: 1px #000000; /* 1px black stroke */
+}
+
 .coin-img.fade-out {
   opacity: 0;
 }
@@ -47,5 +51,5 @@
 
 .animate-flyUp {
   animation: flyUp 1.5s linear forwards;
+  -webkit-text-stroke: 1px #000000; 
 }
-

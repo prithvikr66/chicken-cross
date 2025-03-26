@@ -14,6 +14,7 @@ router.get("/pending-withdrawals", async (req, res) => {
       .from("transactions")
       .select("*")
       .eq("transaction_type", "withdrawal")
+      // .eq("status", "pending")
       .or("status.eq.pending,status.eq.failed");
 
     if (error) {
@@ -32,7 +33,6 @@ router.get("/pending-withdrawals", async (req, res) => {
 
 router.post("/completed-transactions", async (req, res) => {
   const { transactions } = req.body;
-
   if (!transactions || !Array.isArray(transactions)) {
     return res.status(400).json({ error: "Invalid transactions data" });
   }
@@ -309,39 +309,45 @@ router.put("/house-balance", async (req, res) => {
 
 router.get('/history', async (req, res) => {
   try {
+    // 1. Fetch both successful and rejected withdrawals
     const { data: transactions, error } = await supabase
       .from('transactions')
       .select('*')
       .eq('transaction_type', 'withdrawal')
-      .eq('status', 'successful')
+      .in('status', ['successful', 'failed']) // Include both statuses
       .order('updated_at', { ascending: false });
 
     if (error) throw error;
 
-    // 2. Group transactions by admin and timestamp (5-minute window)
+    // 2. Group transactions by status, admin, and timestamp
     const grouped = transactions.reduce((groups, tx) => {
-      const key = `${tx.signed_by}-${Math.floor(new Date(tx.updated_at).getTime() / (5 * 60 * 1000))}`;
+      // Create separate groups for approved/rejected
+      const statusKey = tx.status === 'successful' ? 'approved' : 'failed';
+      const timeKey = Math.floor(new Date(tx.updated_at).getTime() / (5 * 60 * 1000));
+      const groupKey = `${statusKey}-${tx.signed_by}-${timeKey}`;
       
-      if (!groups[key]) {
-        groups[key] = {
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          status: statusKey, // 'approved' or 'rejected'
           signed_by: tx.signed_by,
           signed_at: tx.updated_at,
           transactions: []
         };
       }
       
-      groups[key].transactions.push(tx);
+      groups[groupKey].transactions.push(tx);
       return groups;
     }, {});
 
-    // 3. Convert to array and sort newest first
-    const result = Object.values(grouped)
-      .sort((a, b) => new Date(b.signed_at) - new Date(a.signed_at));
+    // 3. Convert to array and sort
+    const result = Object.values(grouped).sort((a, b) => 
+      new Date(b.signed_at) - new Date(a.signed_at)
+    );
 
     res.status(200).json({ groups: result });
     
   } catch (err) {
-    console.error('Failed to fetch grouped withdrawals:', err);
+    console.error('Failed to fetch withdrawal history:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });
