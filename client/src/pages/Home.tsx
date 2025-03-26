@@ -8,11 +8,12 @@ import GameHistory from "../components/GameHistory";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
+  navigateToProfileWithModal: any;
 }
 
 const API_URL = import.meta.env.VITE_BACKEND_URI;
 
-export function Home({ onPageChange }: HomeProps) {
+export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const { publicKey, disconnect } = useWallet();
   const menuRef = useRef<HTMLDivElement>(null);
 
@@ -58,7 +59,11 @@ export function Home({ onPageChange }: HomeProps) {
   // Track if /create is in-flight
   const [isCreating, setIsCreating] = useState(false);
   const [cashOutLane, setCashOutLane] = useState<number>(0);
-  const [ifCashOut, setIfCashOut] = useState({ ifCashOut: false, cashOutLane: 0, crashLane: 0 });
+  const [ifCashOut, setIfCashOut] = useState({
+    ifCashOut: false,
+    cashOutLane: 0,
+    crashLane: 0,
+  });
 
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
@@ -131,7 +136,7 @@ export function Home({ onPageChange }: HomeProps) {
       try {
         if (!gameActive) {
           setIsCreating(true);
-          // While we are in flight => buttonState => "start_loading"      
+          // While we are in flight => buttonState => "start_loading"
           setButtonState("start_loading");
           const randomBytes = new Uint8Array(16);
           window.crypto.getRandomValues(randomBytes);
@@ -163,7 +168,7 @@ export function Home({ onPageChange }: HomeProps) {
       } catch (err: any) {
         setError(
           "Failed to create seed pair: " +
-          (err.response?.data?.error || err.message)
+            (err.response?.data?.error || err.message)
         );
         setButtonState("start_default");
       } finally {
@@ -175,15 +180,19 @@ export function Home({ onPageChange }: HomeProps) {
   }, [betAmount, difficulty, publicKey, balance]);
 
   const handleCashOut = (cashOutLane: number) => {
-    setCashOutLane(cashOutLane)
-  }
+    setCashOutLane(cashOutLane);
+  };
   const handleStartGame = async () => {
     if (buttonState === "cashout_enabled") {
       const token = localStorage.getItem("authToken");
       if (encryptedCrashLane)
-        setIfCashOut({ ifCashOut: true, cashOutLane: cashOutLane, crashLane: encryptedCrashLane })
-      setButtonState("cashout_disabled")
-      setGameActive(false)
+        setIfCashOut({
+          ifCashOut: true,
+          cashOutLane: cashOutLane,
+          crashLane: encryptedCrashLane,
+        });
+      setButtonState("cashout_disabled");
+      setGameActive(false);
       const response = await axios.post(
         `${API_URL}/api/seeds/retire`,
         { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
@@ -227,8 +236,7 @@ export function Home({ onPageChange }: HomeProps) {
           { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (response)
-          setTimeout(() => window.location.reload(), 3000);
+        if (response) setTimeout(() => window.location.reload(), 3000);
       } else {
         setTimeout(() => window.location.reload(), 3000);
       }
@@ -263,9 +271,9 @@ export function Home({ onPageChange }: HomeProps) {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (response) {
-      setTimeout(() => window.location.reload(), 3000)
+      setTimeout(() => window.location.reload(), 3000);
     }
-  }
+  };
   // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
   const handleFirstLaneClick = () => {
     if (buttonState === "cashout_disabled") {
@@ -294,7 +302,10 @@ export function Home({ onPageChange }: HomeProps) {
                   <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
-              <button className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1">
+              <button
+                className="bg-yellow-500 hover:bg-yellow-600 text-black font-medium px-4 py-2 rounded-lg transition-colors flex items-center space-x-1"
+                onClick={navigateToProfileWithModal}
+              >
                 <Plus className="w-4 h-4" />
                 <span>Deposit</span>
               </button>
@@ -304,7 +315,9 @@ export function Home({ onPageChange }: HomeProps) {
                 <div className="flex items-center space-x-1">
                   <Wallet className="w-4 h-4 text-yellow-400" />
                   <span className="font-medium text-sm">
-                    {balance !== null ? `${balance.toFixed(3)} SOL` : "Loading..."}
+                    {balance !== null
+                      ? `${balance.toFixed(3)} SOL`
+                      : "Loading..."}
                   </span>
                 </div>
               </div>
@@ -453,10 +466,11 @@ export function Home({ onPageChange }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
-                              ? "bg-purple-500 text-white"
-                              : "bg-white/5 text-gray-400 hover:bg-white/10"
-                              }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
+                              difficulty === level
+                                ? "bg-purple-500 text-white"
+                                : "bg-white/5 text-gray-400 hover:bg-white/10"
+                            }`}
                             disabled={gameActive}
                           >
                             {level}
