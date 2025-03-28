@@ -32,7 +32,7 @@ function RoadUI({
   ifCashOut,
   hideWall,
   showGameEnd,
-  isCoinVisible
+  isCoinVisible,
 }: RoadUIProps) {
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
@@ -60,7 +60,11 @@ function RoadUI({
         flex justify-center items-center 
         h-full 
         relative
-        ${isClickable ? "hover:bg-[#3b3e70] cursor-pointer" : "cursor-not-allowed"}
+        ${
+          isClickable
+            ? "hover:bg-[#3b3e70] cursor-pointer"
+            : "cursor-not-allowed"
+        }
       `}
       style={{
         minWidth: "155px",
@@ -73,13 +77,17 @@ function RoadUI({
         <img
           src={CoinImg}
           alt="Coin"
-          className={`coin-img   ${ifCashOut?.ifCashOut && (ifCashOut?.crashLane - 1 === laneIndex) ? "hidden" : "block"}
-           ${coinFaded ? " hidden  " : "hover:scale-110 transition-transform"
-            }`}
+          className={`coin-img   ${
+            ifCashOut?.ifCashOut && ifCashOut?.crashLane - 1 === laneIndex
+              ? "hidden"
+              : "block"
+          }
+           ${coinFaded ? " hidden  " : "hover:scale-110 transition-transform"}`}
         />
         <span
-          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${isNextLane ? "text-white" : "text-gray-500"
-            }`}
+          className={`absolute text-sm font-bold ${coinFaded ? "hidden" : ""} ${
+            isNextLane ? "text-white" : "text-gray-500"
+          }`}
         >
           {value.toFixed(2)}x
         </span>
@@ -89,42 +97,65 @@ function RoadUI({
         <img
           src={wallImg}
           alt="Wall"
-          className={`wall-img mt-[65%] lg:mt-[80%]  ${laneIndex <= currentLane ? "fall" : ""} 
-            ${(laneIndex === multipliers.length && showGameEnd) || (ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1)
-              ? "hidden"
-              : ""
+          className={`wall-img mt-[65%] lg:mt-[80%]  ${
+            laneIndex <= currentLane ? "fall" : ""
+          } 
+            ${
+              (laneIndex === multipliers.length && showGameEnd) ||
+              (ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1)
+                ? "hidden"
+                : ""
             } `}
         />
       )}
       <img
         src={ClaimedCoinImg}
         className={` 
-    ${laneIndex <= currentLane - 1 ? "animate-bounce mt-[40%] lg:mt-[40%] " : "hidden"}
+    ${
+      laneIndex <= currentLane - 1
+        ? "animate-bounce mt-[40%] lg:mt-[40%] "
+        : "hidden"
+    }
   `}
         alt=""
       />
       <div
         className={`gameend absolute px-3 py-1 bg-[#32de84] border-2 border-white rounded-xl
-          ${laneIndex === multipliers.length && showGameEnd
-            ? "animate-flyUp"
-            : "hidden"
+          ${
+            laneIndex === multipliers.length && showGameEnd
+              ? "animate-flyUp"
+              : "hidden"
           }
         `}
       >
-        <span className=" font-outline-black text-xl font-[800] " >$ {value}</span>
+        <span className=" font-outline-black text-xl font-[800] ">
+          $ {value}
+        </span>
       </div>
       <div
         className={`gameend absolute px-3 py-1 z-50 bg-[#32de84] border-2 border-white rounded-xl
-          ${ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1
-            ? "animate-flyUp"
-            : "hidden"
+          ${
+            ifCashOut?.ifCashOut && laneIndex === ifCashOut.cashOutLane + 1
+              ? "animate-flyUp"
+              : "hidden"
           }
         `}
       >
-        <span className=" font-outline-black text-xl font-[800] " >$ {value}</span>
+        <span className=" font-outline-black text-xl font-[800] ">
+          $ {value}
+        </span>
       </div>
-      <div className={` ${ifCashOut?.ifCashOut && (ifCashOut?.crashLane - 1 === laneIndex) ? "block" : "hidden"} absolute flex justify-center items-center crashicon  font-[500]  px-3 py-1   bg-[#EE4B2B] border-2  border-white rounded-xl `}>
-        <img className=" inline mr-1 " src={SkeletonImg} alt="" />  <span className=" font-outline-black text-xl font-[800] " >$ {value}</span>
+      <div
+        className={` ${
+          ifCashOut?.ifCashOut && ifCashOut?.crashLane - 1 === laneIndex
+            ? "block"
+            : "hidden"
+        } absolute flex justify-center items-center crashicon  font-[500]  px-3 py-1   bg-[#EE4B2B] border-2  border-white rounded-xl `}
+      >
+        <img className=" inline mr-1 " src={SkeletonImg} alt="" />{" "}
+        <span className=" font-outline-black text-xl font-[800] ">
+          $ {value}
+        </span>
       </div>
     </div>
   );

@@ -77,7 +77,7 @@ const GameHistory: React.FC<GameHistoryProps> = ({ apiUrl }) => {
               <thead className="bg-gradient-to-r from-purple-500/10 to-pink-500/10">
                 <tr className="text-left text-gray-400">
                   <th className="sticky top-0 px-4 py-3 bg-[#1A2C38] font-semibold">User</th>
-                  <th className="sticky top-0 px-4 py-3 bg-[#1A2C38] font-semibold hidden md:table-cell">Amount</th>
+                  <th className="sticky top-0 px-4 py-3 bg-[#1A2C38] font-semibold">Amount</th>
                   <th className="sticky top-0 px-4 py-3 bg-[#1A2C38] font-semibold">Payout</th>
                   <th className="sticky top-0 px-4 py-3 bg-[#1A2C38] font-semibold hidden md:table-cell">Difficulty</th>
                 </tr>
@@ -93,7 +93,7 @@ const GameHistory: React.FC<GameHistoryProps> = ({ apiUrl }) => {
                     <td className="px-4 py-3">
                       <span className="font-medium text-purple-400">{formatAddress(game.wallet_address)}</span>
                     </td>
-                    <td className="px-4 py-3 hidden md:table-cell">
+                    <td className="px-4 py-3">
                       <span className="text-yellow-400">{game.bet_amount.toFixed(3)} SOL</span>
                     </td>
                     <td className="px-4 py-3">
