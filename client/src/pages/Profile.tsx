@@ -117,8 +117,11 @@ export function Profile({
   const [isWithdrawPending, setIsWithdrawPending] = React.useState(false);
   const [withdrawError, setWithdrawError] = React.useState<string | null>(null);
 
+  const [isLoadingProfile, setIsLoadingProfile] = React.useState(true);
+
   React.useEffect(() => {
     const fetchProfile = async () => {
+      setIsLoadingProfile(true);
       try {
         const authToken = localStorage.getItem("authToken");
         if (!authToken) {
@@ -159,7 +162,7 @@ export function Profile({
       } catch (err) {
         // setError(err.message);
       } finally {
-        // setLoading(false);
+        setIsLoadingProfile(false);
       }
     };
 
@@ -394,7 +397,9 @@ export function Profile({
       const data = await response.json();
 
       if (response.status === 409) {
-        throw new Error("You already have a pending withdrawal request. Please try again after some time");
+        throw new Error(
+          "You already have a pending withdrawal request. Please try again after some time"
+        );
       }
 
       if (!response.ok) {
@@ -545,10 +550,16 @@ export function Profile({
         <div className="lg:col-span-1 h-full">
           <div className="bg-[#1A2C38] rounded-2xl p-6 space-y-6 border border-white/10 h-full">
             <div className="relative">
-              <img
-                src={profile.profileImage}
-                className="w-24 h-24 rounded-xl object-cover mx-auto ring-4 ring-yellow-500/20"
-              />
+              {isLoadingProfile ? (
+                <div className="w-24 h-24 rounded-xl bg-[#2A3C48] animate-pulse flex items-center justify-center ring-4 ring-yellow-500/20 mx-auto">
+                  <div className="w-8 h-8 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
+                </div>
+              ) : (
+                <img
+                  src={profile.profileImage}
+                  className="w-24 h-24 rounded-xl object-cover mx-auto ring-4 ring-yellow-500/20"
+                />
+              )}
               <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
                 <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-medium text-xs px-3 py-1 rounded-full shadow-lg shadow-yellow-500/25">
                   Level 42
@@ -630,57 +641,51 @@ export function Profile({
               </div>
             </div>
 
-            <div className="overflow-x-auto -mx-6 flex-1 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <div className="overflow-x-auto hide-scrollbar lg:overflow-x-visible -mx-6 flex-1">
               <div className="inline-block min-w-full align-middle px-6 h-full">
-                <div className="overflow-x-auto overflow-y-auto max-h-[400px] [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  <table className="min-w-[800px] w-full">
+                <div className="overflow-y-auto max-h-[400px] hide-scrollbar">
+                  <table className="w-full lg:table-fixed border-separate border-spacing-0">
                     <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
-                        <th className="pb-4 font-medium">Type</th>
-                        <th className="pb-4 font-medium">Status</th>
-                        <th className="pb-4 font-medium">Amount</th>
-                        <th className="pb-4 font-medium">Date</th>
-                        <th className="pb-4 font-medium">Transaction</th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Type</th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Status</th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Amount</th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Date</th>
+                        <th className="pb-4 font-medium lg:w-[30%] pl-8 pr-4 whitespace-nowrap">Transaction</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
                       {isLoadingTransactions ? (
                         <tr>
-                          <td colSpan={5} className="py-4 text-center">
+                          <td colSpan={5} className="py-4 px-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
                               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                              <span className="text-gray-400">
-                                Loading transactions...
-                              </span>
+                              <span className="text-gray-400">Loading transactions...</span>
                             </div>
                           </td>
                         </tr>
-                      ) : !Array.isArray(transactions) ||
-                        transactions.length === 0 ? (
+                      ) : !Array.isArray(transactions) || transactions.length === 0 ? (
                         <tr>
-                          <td
-                            colSpan={5}
-                            className="py-20 text-center text-gray-400"
-                          >
+                          <td colSpan={5} className="py-20 px-4 text-center text-gray-400">
                             No transactions found
                           </td>
                         </tr>
                       ) : (
                         transactions.map((tx) => (
                           <tr key={tx.id} className="text-white">
-                            <td className="py-4">
+                            <td className="py-4 px-4 whitespace-nowrap">
                               <div className="flex items-center space-x-2">
                                 {tx.transaction_type === "deposit" ? (
-                                  <ArrowUpCircle className="w-5 h-5 text-green-400" />
+                                  <ArrowUpCircle className="w-5 h-5 text-green-400 flex-shrink-0" />
                                 ) : (
-                                  <ArrowDownCircle className="w-5 h-5 text-red-400" />
+                                  <ArrowDownCircle className="w-5 h-5 text-red-400 flex-shrink-0" />
                                 )}
                                 <span className="capitalize font-medium">
                                   {tx.transaction_type}
                                 </span>
                               </div>
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-4 whitespace-nowrap">
                               <span
                                 className={`px-2 py-1 rounded-full text-xs font-medium ${
                                   tx.status === "successful"
@@ -693,7 +698,7 @@ export function Profile({
                                 {tx.status}
                               </span>
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-4 whitespace-nowrap">
                               <span
                                 className={
                                   tx.transaction_type === "deposit"
@@ -705,40 +710,25 @@ export function Profile({
                                 {tx.amount} SOL
                               </span>
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 px-4 whitespace-nowrap">
                               <span
                                 className="text-purple-200 cursor-help"
-                                title={new Date(tx.created_at).toLocaleString(
-                                  undefined,
-                                  {
-                                    weekday: "long",
-                                    year: "numeric",
-                                    month: "long",
-                                    day: "numeric",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                    second: "2-digit",
-                                    timeZoneName: "short",
-                                  }
-                                )}
+                                title={new Date(tx.created_at).toLocaleString()}
                               >
-                                {new Date(tx.created_at).toLocaleDateString(
-                                  undefined,
-                                  {
-                                    day: "numeric",
-                                    month: "short",
-                                    hour: "2-digit",
-                                    minute: "2-digit",
-                                  }
-                                )}
+                                {new Date(tx.created_at).toLocaleDateString(undefined, {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
                               </span>
                             </td>
-                            <td className="py-4">
+                            <td className="py-4 pl-8 pr-4 whitespace-nowrap">
                               <a
                                 href={`https://explorer.solana.com/tx/${tx.signature}?cluster=devnet`}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="text-sm text-gray-400 hover:text-yellow-400 transition-colors"
+                                className="text-sm text-gray-400 hover:text-yellow-400 transition-colors truncate block"
                               >
                                 {tx.signature ? (
                                   <>
@@ -799,7 +789,7 @@ export function Profile({
                 <Calculator className="w-4 h-4 text-green-400" />
               </div>
               <div className="text-2xl font-bold text-white">
-                {stats.averageWager.toFixed(3)} SOL
+                {stats.averageWager && stats.averageWager.toFixed(3)} SOL
               </div>
               <div className="text-sm text-gray-400 mt-1">Per bet average</div>
             </div>
@@ -813,16 +803,28 @@ export function Profile({
             </div>
 
             {/* Update the table container to enable horizontal scrolling */}
-            <div className="relative w-full overflow-x-auto">
+            <div className="relative w-full overflow-x-auto hide-scrollbar">
               <div className="max-h-[400px] overflow-y-auto hide-scrollbar scrollbar-thin scrollbar-track-transparent scrollbar-thumb-gray-700">
-                <table className="w-full min-w-[800px]"> {/* Add min-width to ensure table doesn't compress */}
+                <table className="w-full min-w-[800px]">
+                  {" "}
+                  {/* Add min-width to ensure table doesn't compress */}
                   <thead className="sticky top-0 bg-[#1A2C38] z-10">
                     <tr className="text-left text-xs uppercase text-purple-200">
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">Amount</th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">Payout</th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">P/L</th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">Difficulty</th>
-                      <th className="px-4 py-4 whitespace-nowrap font-medium">Date</th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Amount
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Payout
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        P/L
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Difficulty
+                      </th>
+                      <th className="px-4 py-4 whitespace-nowrap font-medium">
+                        Date
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -831,13 +833,18 @@ export function Profile({
                         <td colSpan={5} className="px-4 py-8 text-center">
                           <div className="flex items-center justify-center space-x-2">
                             <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                            <span className="text-gray-400">Loading bets...</span>
+                            <span className="text-gray-400">
+                              Loading bets...
+                            </span>
                           </div>
                         </td>
                       </tr>
                     ) : !bettingHistory.length ? (
                       <tr>
-                        <td colSpan={5} className="px-4 py-20 text-center text-gray-400">
+                        <td
+                          colSpan={5}
+                          className="px-4 py-20 text-center text-gray-400"
+                        >
                           No betting history found
                         </td>
                       </tr>
@@ -889,15 +896,16 @@ export function Profile({
                             </span>
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap relative group">
-                            <span
-                              className="text-purple-200 cursor-help"
-                            >
-                              {new Date(bet.created_at).toLocaleDateString(undefined, {
-                                day: "numeric",
-                                month: "short",
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                            <span className="text-purple-200 cursor-help">
+                              {new Date(bet.created_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  day: "numeric",
+                                  month: "short",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                }
+                              )}
                             </span>
                           </td>
                         </tr>
@@ -1179,7 +1187,6 @@ export function Profile({
                   <h3 className="text-xl font-bold bg-gradient-to-r from-purple-400 to-pink-400 text-transparent bg-clip-text">
                     Withdraw SOL
                   </h3>
-                
                 </div>
 
                 <form onSubmit={handleWithdrawSubmit} className="space-y-6">
