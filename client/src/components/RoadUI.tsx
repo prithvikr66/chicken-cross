@@ -36,7 +36,6 @@ function RoadUI({
 }: RoadUIProps) {
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
-
   // If the hen is currently at lane X, the "next" lane is X+1, and only that should be clickable
   const isClickable = gameActive && laneIndex === currentLane + 1;
   // If you still want the text color logic for the "next" lane:
