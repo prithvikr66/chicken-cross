@@ -192,6 +192,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     setCashOutLane(cashOutLane);
   };
   const handleStartGame = async () => {
+    // cashout 
     if (buttonState === "cashout_enabled") {
       const token = localStorage.getItem("authToken");
       if (encryptedCrashLane)
@@ -204,13 +205,13 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
       setGameActive(false);
       const response = await axios.post(
         `${API_URL}/api/seeds/retire`,
-        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane, difficulty },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (response) {
-        setTimeout(() => window.location.reload(), refreshTime);
-      }
+
+      setTimeout(() => { window.location.reload() }, refreshTime);
     } else {
+      //game start
       setButtonState("cashout_disabled");
       if (!seedPairId) {
         setError("No seed pair available. Please adjust bet/difficulty first.");
@@ -246,7 +247,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
           { seedPairId, betAmount: parseFloat(betAmount), cashOutLane, difficulty },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (response) setTimeout(() => window.location.reload(), refreshTime);
+        setTimeout(() => window.location.reload(), refreshTime);
       } else {
         setTimeout(() => window.location.reload(), refreshTime);
       }
@@ -376,7 +377,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
 
       {/* Main content */}
       <div className=" ">
-        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5   ">
+        <div className=" min-h-[40rem] bg-[#191939] lg:p-5   ">
           {initialLoading ? (
             <div className="  w-full h-screen flex justify-center items-center ">
               <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>

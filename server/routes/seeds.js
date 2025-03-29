@@ -264,8 +264,8 @@ router.post("/retire", async (req, res) => {
         .status(404)
         .json({ error: "Seed pair not found or already retired" });
     }
-
-    let payoutMultiplier = cashOutLane && multipliers["original"][difficulty].data[cashOutLane]
+    let payoutMultiplier = multipliers.original[difficulty].data[cashOutLane].multiplier;
+      
     const payout = betAmount * payoutMultiplier;
 
     if (betAmount > 0) {

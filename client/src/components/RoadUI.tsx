@@ -128,7 +128,7 @@ function RoadUI({
         `}
       >
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+          {value}X
         </span>
       </div>
       <div
@@ -141,7 +141,7 @@ function RoadUI({
         `}
       >
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+         {value}X
         </span>
       </div>
       <div
@@ -153,7 +153,7 @@ function RoadUI({
       >
         <img className=" inline mr-1 " src={SkeletonImg} alt="" />{" "}
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+          {value}X
         </span>
       </div>
     </div>
