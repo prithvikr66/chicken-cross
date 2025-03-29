@@ -113,7 +113,7 @@ function RoadUI({
         className={` 
     ${
       laneIndex <= currentLane - 1
-        ? "animate-bounce mt-[40%] lg:mt-[40%] "
+        ? " claimedCoin mt-[40%] lg:mt-[40%] "
         : "hidden"
     }
   `}

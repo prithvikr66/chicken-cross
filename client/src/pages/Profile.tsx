@@ -175,7 +175,7 @@ export function Profile({
         try {
           const connection = new Connection(
             import.meta.env.VITE_SOLANA_RPC_URL ||
-              "https://api.devnet.solana.com"
+            "https://api.devnet.solana.com"
           );
           const balance = await connection.getBalance(publicKey);
           setWalletBalance(balance / LAMPORTS_PER_SOL);
@@ -196,8 +196,7 @@ export function Profile({
         if (!authToken) throw new Error("No auth token found");
 
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URI
+          `${import.meta.env.VITE_BACKEND_URI
           }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
           {
             headers: {
@@ -233,8 +232,7 @@ export function Profile({
         if (!authToken) throw new Error("No auth token found");
 
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URI
+          `${import.meta.env.VITE_BACKEND_URI
           }/api/transactions/game-history?wallet_address=${publicKey?.toBase58()}`,
           {
             headers: {
@@ -497,8 +495,7 @@ export function Profile({
 
       // Fetch updated transactions
       const txResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URI
+        `${import.meta.env.VITE_BACKEND_URI
         }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
         {
           headers: {
@@ -687,13 +684,12 @@ export function Profile({
                             </td>
                             <td className="py-4 px-4 whitespace-nowrap">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  tx.status === "successful"
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${tx.status === "successful"
                                     ? "bg-green-500/20 text-green-400"
                                     : tx.status === "failed"
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-yellow-500/20 text-yellow-400"
-                                }`}
+                                      ? "bg-red-500/20 text-red-400"
+                                      : "bg-yellow-500/20 text-yellow-400"
+                                  }`}
                               >
                                 {tx.status}
                               </span>
@@ -872,11 +868,10 @@ export function Profile({
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
-                                bet.payout > bet.bet_amount
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${bet.payout > bet.bet_amount
                                   ? "bg-green-500/20 text-green-400"
                                   : "bg-red-500/20 text-red-400"
-                              }`}
+                                }`}
                             >
                               {bet.payout > bet.bet_amount ? "+" : ""}
                               {(bet.payout - bet.bet_amount).toFixed(3)}
@@ -884,13 +879,12 @@ export function Profile({
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium ${
-                                bet.difficulty === "easy"
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium ${bet.difficulty === "easy"
                                   ? "bg-green-500/20 text-green-400"
                                   : bet.difficulty === "medium"
-                                  ? "bg-yellow-500/20 text-yellow-400"
-                                  : "bg-red-500/20 text-red-400"
-                              }`}
+                                    ? "bg-yellow-500/20 text-yellow-400"
+                                    : "bg-red-500/20 text-red-400"
+                                }`}
                             >
                               {bet.difficulty}
                             </span>
@@ -1114,11 +1108,10 @@ export function Profile({
                       disabled={
                         !depositAmount || parseFloat(depositAmount) <= 0
                       }
-                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${
-                        !depositAmount || parseFloat(depositAmount) <= 0
+                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${!depositAmount || parseFloat(depositAmount) <= 0
                           ? "opacity-50 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                     >
                       Deposit
                     </button>
@@ -1225,11 +1218,10 @@ export function Profile({
                       disabled={
                         !withdrawAmount || parseFloat(withdrawAmount) <= 0
                       }
-                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${
-                        !withdrawAmount || parseFloat(withdrawAmount) <= 0
+                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${!withdrawAmount || parseFloat(withdrawAmount) <= 0
                           ? "opacity-50 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                     >
                       Withdraw
                     </button>

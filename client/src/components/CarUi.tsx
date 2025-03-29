@@ -64,7 +64,7 @@ const CarUi: React.FC<CarUiProps> = ({
     if (henLane > 0) {
       const arr: number[] = [];
       // this code specifies the number lanes after hen lane which doesnt spawn cars
-      for (let i = 1; i <= henLane + 2; i++) {
+      for (let i = 2; i <= henLane + 2; i++) {
         arr.push(i);
       }
       crossedLanesRef.current = arr;
