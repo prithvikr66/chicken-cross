@@ -100,7 +100,7 @@ const GameHistory: React.FC<GameHistoryProps> = ({ apiUrl }) => {
                       <span className={`font-medium ${
                         game.payout > game.bet_amount ? 'text-green-400' : 'text-red-400'
                       }`}>
-                        {game?.payout?.toFixed(3)} SOL
+                        {game.payout> 0 ? game.payout.toFixed(3) : game.payout} SOL
                       </span>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">

@@ -74,6 +74,8 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
+ 
+
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
@@ -288,7 +290,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                       ? `${balance.toFixed(3)} SOL`
                       : "Loading..."}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
               <button
