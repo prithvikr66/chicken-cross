@@ -36,7 +36,6 @@ function RoadUI({
 }: RoadUIProps) {
   const [coinFaded, setCoinFaded] = useState(false);
   const [wallFalling, setWallFalling] = useState(false);
-
   // If the hen is currently at lane X, the "next" lane is X+1, and only that should be clickable
   const isClickable = gameActive && laneIndex === currentLane + 1;
   // If you still want the text color logic for the "next" lane:
@@ -113,7 +112,7 @@ function RoadUI({
         className={` 
     ${
       laneIndex <= currentLane - 1
-        ? "animate-bounce mt-[40%] lg:mt-[40%] "
+        ? " claimedCoin mt-[40%] lg:mt-[40%] "
         : "hidden"
     }
   `}
@@ -129,7 +128,7 @@ function RoadUI({
         `}
       >
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+          {value}X
         </span>
       </div>
       <div
@@ -142,7 +141,7 @@ function RoadUI({
         `}
       >
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+         {value}X
         </span>
       </div>
       <div
@@ -154,7 +153,7 @@ function RoadUI({
       >
         <img className=" inline mr-1 " src={SkeletonImg} alt="" />{" "}
         <span className=" font-outline-black text-xl font-[800] ">
-          $ {value}
+          {value}X
         </span>
       </div>
     </div>

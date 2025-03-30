@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Connection, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useHandleDeposits } from "../utils/Deposits";
+import { stat } from "fs";
 
 interface ProfileProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -175,7 +176,7 @@ export function Profile({
         try {
           const connection = new Connection(
             import.meta.env.VITE_SOLANA_RPC_URL ||
-              "https://api.devnet.solana.com"
+            "https://api.devnet.solana.com"
           );
           const balance = await connection.getBalance(publicKey);
           setWalletBalance(balance / LAMPORTS_PER_SOL);
@@ -196,8 +197,7 @@ export function Profile({
         if (!authToken) throw new Error("No auth token found");
 
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URI
+          `${import.meta.env.VITE_BACKEND_URI
           }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
           {
             headers: {
@@ -233,8 +233,7 @@ export function Profile({
         if (!authToken) throw new Error("No auth token found");
 
         const response = await fetch(
-          `${
-            import.meta.env.VITE_BACKEND_URI
+          `${import.meta.env.VITE_BACKEND_URI
           }/api/transactions/game-history?wallet_address=${publicKey?.toBase58()}`,
           {
             headers: {
@@ -257,7 +256,10 @@ export function Profile({
         setStats({
           totalWagered: data.user_stats.total_wag,
           totalBets: data.user_stats.total_bets,
-          averageWager: data.user_stats.total_wag / data.user_stats.total_bets,
+          averageWager:
+            data.user_stats.total_wag && data.user_stats.total_bets
+              ? data.user_stats.total_wag / data.user_stats.total_bets
+              : 0,
         });
       } catch (error) {
         console.error("Error fetching betting history:", error);
@@ -497,8 +499,7 @@ export function Profile({
 
       // Fetch updated transactions
       const txResponse = await fetch(
-        `${
-          import.meta.env.VITE_BACKEND_URI
+        `${import.meta.env.VITE_BACKEND_URI
         }/api/transactions/fetch-transactions?wallet_address=${publicKey?.toBase58()}`,
         {
           headers: {
@@ -637,7 +638,9 @@ export function Profile({
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-yellow-400" />
-                <h3 className="text-xl font-bold text-white">Transaction History</h3>
+                <h3 className="text-xl font-bold text-white">
+                  Transaction History
+                </h3>
               </div>
             </div>
 
@@ -647,11 +650,21 @@ export function Profile({
                   <table className="w-full lg:table-fixed border-separate border-spacing-0">
                     <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
-                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Type</th>
-                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Status</th>
-                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Amount</th>
-                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Date</th>
-                        <th className="pb-4 font-medium lg:w-[30%] pl-8 pr-4 whitespace-nowrap">Transaction</th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">
+                          Type
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">
+                          Status
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">
+                          Amount
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">
+                          Date
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[30%] pl-8 pr-4 whitespace-nowrap">
+                          Transaction
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -660,13 +673,19 @@ export function Profile({
                           <td colSpan={5} className="py-4 px-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
                               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                              <span className="text-gray-400">Loading transactions...</span>
+                              <span className="text-gray-400">
+                                Loading transactions...
+                              </span>
                             </div>
                           </td>
                         </tr>
-                      ) : !Array.isArray(transactions) || transactions.length === 0 ? (
+                      ) : !Array.isArray(transactions) ||
+                        transactions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-20 px-4 text-center text-gray-400">
+                          <td
+                            colSpan={5}
+                            className="py-20 px-4 text-center text-gray-400"
+                          >
                             No transactions found
                           </td>
                         </tr>
@@ -687,13 +706,12 @@ export function Profile({
                             </td>
                             <td className="py-4 px-4 whitespace-nowrap">
                               <span
-                                className={`px-2 py-1 rounded-full text-xs font-medium ${
-                                  tx.status === "successful"
+                                className={`px-2 py-1 rounded-full text-xs font-medium ${tx.status === "successful"
                                     ? "bg-green-500/20 text-green-400"
                                     : tx.status === "failed"
-                                    ? "bg-red-500/20 text-red-400"
-                                    : "bg-yellow-500/20 text-yellow-400"
-                                }`}
+                                      ? "bg-red-500/20 text-red-400"
+                                      : "bg-yellow-500/20 text-yellow-400"
+                                  }`}
                               >
                                 {tx.status}
                               </span>
@@ -715,12 +733,15 @@ export function Profile({
                                 className="text-purple-200 cursor-help"
                                 title={new Date(tx.created_at).toLocaleString()}
                               >
-                                {new Date(tx.created_at).toLocaleDateString(undefined, {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {new Date(tx.created_at).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
                               </span>
                             </td>
                             <td className="py-4 pl-8 pr-4 whitespace-nowrap">
@@ -789,7 +810,10 @@ export function Profile({
                 <Calculator className="w-4 h-4 text-green-400" />
               </div>
               <div className="text-2xl font-bold text-white">
-                {stats.averageWager && stats.averageWager.toFixed(3)} SOL
+                {stats.averageWager > 0
+                  ? stats.averageWager.toFixed(3)
+                  : stats.averageWager}{" "}
+                SOL
               </div>
               <div className="text-sm text-gray-400 mt-1">Per bet average</div>
             </div>
@@ -872,11 +896,10 @@ export function Profile({
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${
-                                bet.payout > bet.bet_amount
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-sm font-medium ${bet.payout > bet.bet_amount
                                   ? "bg-green-500/20 text-green-400"
                                   : "bg-red-500/20 text-red-400"
-                              }`}
+                                }`}
                             >
                               {bet.payout > bet.bet_amount ? "+" : ""}
                               {(bet.payout - bet.bet_amount).toFixed(3)}
@@ -884,13 +907,12 @@ export function Profile({
                           </td>
                           <td className="px-4 py-4 whitespace-nowrap">
                             <span
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium ${
-                                bet.difficulty === "easy"
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-[10px] font-medium ${bet.difficulty === "easy"
                                   ? "bg-green-500/20 text-green-400"
                                   : bet.difficulty === "medium"
-                                  ? "bg-yellow-500/20 text-yellow-400"
-                                  : "bg-red-500/20 text-red-400"
-                              }`}
+                                    ? "bg-yellow-500/20 text-yellow-400"
+                                    : "bg-red-500/20 text-red-400"
+                                }`}
                             >
                               {bet.difficulty}
                             </span>
@@ -1114,11 +1136,10 @@ export function Profile({
                       disabled={
                         !depositAmount || parseFloat(depositAmount) <= 0
                       }
-                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${
-                        !depositAmount || parseFloat(depositAmount) <= 0
+                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${!depositAmount || parseFloat(depositAmount) <= 0
                           ? "opacity-50 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                     >
                       Deposit
                     </button>
@@ -1225,11 +1246,10 @@ export function Profile({
                       disabled={
                         !withdrawAmount || parseFloat(withdrawAmount) <= 0
                       }
-                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${
-                        !withdrawAmount || parseFloat(withdrawAmount) <= 0
+                      className={`flex-1 px-6 py-3 rounded-lg bg-gradient-to-r from-yellow-400 to-yellow-500 hover:from-yellow-500 hover:to-yellow-600 text-black font-bold transition-all transform hover:scale-[1.02] active:scale-[0.98] shadow-lg shadow-yellow-500/25 ${!withdrawAmount || parseFloat(withdrawAmount) <= 0
                           ? "opacity-50 cursor-not-allowed"
                           : ""
-                      }`}
+                        }`}
                     >
                       Withdraw
                     </button>

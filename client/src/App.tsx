@@ -6,26 +6,26 @@ import { WalletSelector } from "./components/WalletSelector";
 import { Header } from "./components/Header";
 import { Home } from "./pages/Home";
 import { Profile } from "./pages/Profile";
-import { Buffer } from 'buffer';
+import { Buffer } from "buffer";
 function App() {
-  const { connected, publicKey, signMessage } = useWallet();
+  const { connected, publicKey, signMessage , disconnect } = useWallet();
   const [loading, setLoading] = React.useState(false);
   const [signedIn, setSignedIn] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState<"home" | "profile">(
     "home"
   );
-    const [showDepositModal, setShowDepositModal] = React.useState(false);
-  
+  const [showDepositModal, setShowDepositModal] = React.useState(false);
 
   React.useEffect(() => {
     const token = localStorage.getItem("authToken");
-    if (token) setSignedIn(true);1
+    if (token) setSignedIn(true);
+    1;
   }, []);
 
   const navigateToProfileWithModal = () => {
-    setCurrentPage('profile');
-    setShowDepositModal(true)
-};
+    setCurrentPage("profile");
+    setShowDepositModal(true);
+  };
   const handleSignIn = async () => {
     try {
       if (!connected || !publicKey || !signMessage) {
@@ -72,6 +72,23 @@ function App() {
     }
   };
 
+  React.useEffect(() => {
+    const handleAccountChanged = () => {
+      console.log("changed")
+      disconnect();
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("walletName");
+      window.location.reload();
+    };
+    if (window.solana?.isPhantom) {
+      window.solana.on("accountChanged", handleAccountChanged);
+    }
+
+    return () => {
+      window.solana?.off("accountChanged", handleAccountChanged);
+    };
+  }, []);
+
   return (
     <div className="min-h-screen bg-[#0F1923] text-white">
       {/* {signedIn && <Header onPageChange={setCurrentPage} />} */}
@@ -112,9 +129,16 @@ function App() {
           </div>
         </div>
       ) : currentPage === "home" ? (
-        <Home onPageChange={setCurrentPage} navigateToProfileWithModal={navigateToProfileWithModal}/>
+        <Home
+          onPageChange={setCurrentPage}
+          navigateToProfileWithModal={navigateToProfileWithModal}
+        />
       ) : (
-        <Profile onPageChange={setCurrentPage} showDepositModal={showDepositModal} setShowDepositModal={setShowDepositModal}/>
+        <Profile
+          onPageChange={setCurrentPage}
+          showDepositModal={showDepositModal}
+          setShowDepositModal={setShowDepositModal}
+        />
       )}
     </div>
   );

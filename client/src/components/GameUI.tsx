@@ -5,7 +5,7 @@ import LeftRightBg from "../assets/left_right_road.png";
 import RoadUI from "./RoadUI";
 import CockUi from "./CockUi";
 import CarUi from "./CarUi";
-
+import refreshTime from "../utils/constants"
 interface GameUIProps {
   betAmount: number;
   difficulty: "easy" | "medium" | "hard" | "daredevil";
@@ -148,7 +148,7 @@ const GameUI: React.FC<GameUIProps> = ({
 
   // Crash Car fully exits => reload or something
   const handleCrashComplete = () => {
-    setTimeout(() => window.location.reload(), 2000)
+    setTimeout(() => window.location.reload(), refreshTime)
   };
 
   return (
