@@ -11,8 +11,6 @@ const supabase = createClient(
 const router = express.Router();
 const maxPayoutPercent = 10; // e.g. 10% of house
 
-
-
 function generateServerSeed() {
   return crypto.randomBytes(32).toString("hex");
 }
@@ -21,23 +19,24 @@ function hashServerSeed(seed) {
   return crypto.createHash("sha256").update(seed).digest("hex");
 }
 
-
-
 const getMultipliers = () => {
   const difficulties = ["easy", "medium", "hard", "daredevil"];
 
   const transformedMultipliers = {
     demo: {},
-    original: {}
+    original: {},
   };
 
   difficulties.forEach((difficulty) => {
-    transformedMultipliers.demo[difficulty] = multipliers.demo[difficulty].data.map(({ multiplier }) => multiplier);
-    transformedMultipliers.original[difficulty] = multipliers.original[difficulty].data.map(({ multiplier }) => multiplier);
+    transformedMultipliers.demo[difficulty] = multipliers.demo[
+      difficulty
+    ].data.map(({ multiplier }) => multiplier);
+    transformedMultipliers.original[difficulty] = multipliers.original[
+      difficulty
+    ].data.map(({ multiplier }) => multiplier);
   });
   return transformedMultipliers;
-}
-
+};
 
 function generateOutcome(serverSeed, clientSeed, nonce) {
   const message = `${clientSeed}:${nonce}`;
@@ -51,7 +50,7 @@ function generateOutcome(serverSeed, clientSeed, nonce) {
   return decimal / max;
 }
 
-export async function determineCrashLane(outcome, betAmount, difficulty) {  
+export async function determineCrashLane(outcome, betAmount, difficulty) {
   const parsedBetAmount = parseFloat(betAmount) || 0;
   const isDemo = parsedBetAmount <= 0;
 
@@ -94,9 +93,8 @@ export async function determineCrashLane(outcome, betAmount, difficulty) {
       selectedIndex = fallbackIndex !== -1 ? fallbackIndex : 0;
     }
   }
-  return selectedIndex+1;
+  return selectedIndex + 1;
 }
-
 
 router.get("/multipliers", async (req, res) => {
   try {
@@ -107,7 +105,6 @@ router.get("/multipliers", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
 
 router.post("/create", async (req, res) => {
   const { clientSeed, difficulty, betAmount, isGameActive } = req.body;
@@ -241,8 +238,9 @@ router.post("/retire", async (req, res) => {
         .status(404)
         .json({ error: "Seed pair not found or already retired" });
     }
-    let payoutMultiplier = multipliers.original[difficulty].data[cashOutLane].multiplier;
-      
+    let payoutMultiplier =
+      multipliers.original[difficulty].data[cashOutLane].multiplier;
+
     const payout = betAmount * payoutMultiplier;
 
     if (betAmount > 0) {
@@ -298,7 +296,9 @@ router.post("/retire", async (req, res) => {
 
       if (houseUpdateError) {
         console.log("house update error", houseUpdateError);
-        return res.status(500).json({ error: "Failed to update house balance" });
+        return res
+          .status(500)
+          .json({ error: "Failed to update house balance" });
       }
     }
 
@@ -340,7 +340,6 @@ router.post("/retire", async (req, res) => {
     res.status(500).json({ error: "Failed to retire seed pair" });
   }
 });
-
 
 router.post("/gamestart", async (req, res) => {
   const { betAmount } = req.body;
@@ -419,7 +418,6 @@ router.post("/gamestart", async (req, res) => {
   }
 });
 
-
 router.post("/crash", async (req, res) => {
   const { walletAddress } = req;
   const { seedPairId, betAmount, cashOutLane } = req.body;
@@ -446,7 +444,6 @@ router.post("/crash", async (req, res) => {
     }
 
     const payout = 0;
-
     if (betAmount > 0) {
       const { error: logError } = await supabase.from("game_history").insert({
         wallet_address: walletAddress,
@@ -459,7 +456,6 @@ router.post("/crash", async (req, res) => {
       });
 
       if (logError) throw logError;
-
     }
 
     const newNonce = seedPair.nonce + 1;

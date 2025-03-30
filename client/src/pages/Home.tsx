@@ -74,6 +74,8 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
+ 
+
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
     const fetchInitialData = async () => {
