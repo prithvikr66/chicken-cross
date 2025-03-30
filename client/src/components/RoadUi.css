@@ -11,6 +11,22 @@
 .coin-img.fade-out {
   opacity: 0;
 }
+.claimedCoin {
+  animation: growCoin 0.4s ease-out forwards;
+  transform-origin: center;
+}
+
+@keyframes growCoin {
+  from {
+    transform: scale(0);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 
 /* Wall falling animation */
 /* Initially, the wall is hidden off-view with opacity 0 */

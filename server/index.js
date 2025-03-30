@@ -7,6 +7,7 @@ import { authRoutes } from "./routes/auth.js";
 import { seedRoutes } from "./routes/seeds.js";
 import jwt from "jsonwebtoken";
 import { adminRoutes } from "./routes/admin.js";
+import { multipliers } from "./utils/multipliers.js";
 
 const app = express();
 const PORT = process.env.PORT || 3000;

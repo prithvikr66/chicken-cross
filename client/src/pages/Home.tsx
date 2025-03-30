@@ -5,6 +5,7 @@ import axios from "axios";
 import nacl from "tweetnacl";
 import GameUI from "../components/GameUI";
 import GameHistory from "../components/GameHistory";
+import refreshTime from "../utils/constants";
 
 interface HomeProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -34,8 +35,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     [key: string]: number[];
   } | null>(null);
   const [seedPairId, setSeedPairId] = useState("");
-  const [serverSeedHash, setServerSeedHash] = useState("");
-  const [clientSeed, setClientSeed] = useState("");
   const [multipliers, setMultipliers] = useState<number[]>([]);
   const [encryptedCrashLane, setEncryptedCrashLane] = useState<
     number | undefined
@@ -43,7 +42,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const [nonce, setNonce] = useState<string>("");
 
   const [gameActive, setGameActive] = useState(false);
-  const [keyPair, setKeyPair] = useState<nacl.BoxKeyPair | null>(null);
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
@@ -56,14 +54,19 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const [error, setError] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Track if /create is in-flight
-  const [isCreating, setIsCreating] = useState(false);
   const [cashOutLane, setCashOutLane] = useState<number>(0);
   const [ifCashOut, setIfCashOut] = useState({
     ifCashOut: false,
     cashOutLane: 0,
     crashLane: 0,
   });
+  const setMultipliersMethod = (allMultipliers: any, difficulty: string) => {
+    if (parseFloat(betAmount) > 0) {
+      setMultipliers(allMultipliers["original"][difficulty])
+    } else {
+      setMultipliers(allMultipliers["demo"][difficulty])
+    }
+  }
 
   // NEW: We define a buttonState with 4 possible states
   // "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
@@ -95,7 +98,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
           }
         );
         setAllMultipliers(allResponse.data);
-        setMultipliers(allResponse.data[difficulty]);
+        setMultipliersMethod(allResponse.data, difficulty);
       } catch (err: any) {
         setError(
           "Failed to load data: " + (err.response?.data?.error || err.message)
@@ -110,71 +113,48 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   // 2) If difficulty changes & no active game, switch multipliers
   useEffect(() => {
     if (!gameActive && allMultipliers) {
-      setMultipliers(allMultipliers[difficulty]);
+      setMultipliersMethod(allMultipliers, difficulty)
     }
   }, [difficulty, allMultipliers, gameActive]);
 
-  // 3) Debounced /seeds/create => idle mode
   useEffect(() => {
     if (!publicKey) return;
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
-    const bet = parseFloat(betAmount);
-    //removed the isNan(bet) to allow empty field
-    if (bet < 0) {
-      setError("Please enter a valid bet amount.");
-      return;
-    }
-    if (balance !== null && bet > balance) {
-      setError("Insufficient balance.");
-      return;
-    }
-
     const timer = setTimeout(async () => {
       // We'll disable the button if we are loading
       try {
         if (!gameActive) {
-          setIsCreating(true);
-          // While we are in flight => buttonState => "start_loading"
           setButtonState("start_loading");
           const randomBytes = new Uint8Array(16);
           window.crypto.getRandomValues(randomBytes);
           const newClientSeed = `ChickenCross-${Array.from(randomBytes)
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("")}-${Date.now()}`;
-          setClientSeed(newClientSeed);
-
-          const newKeyPair = nacl.box.keyPair();
-          setKeyPair(newKeyPair);
-
+          const bet = parseFloat(betAmount);
           const response = await axios.post(
             `${API_URL}/api/seeds/create`,
-            { clientSeed: newClientSeed, difficulty, betAmount: bet },
+            { clientSeed: newClientSeed, difficulty, betAmount: bet, isGameActive: gameActive },
             { headers: { Authorization: `Bearer ${token}` } }
           );
-
+          if (response && response.status === 200) {
+            setButtonState("start_default")
+          }
           setSeedPairId(response.data.seedPairId);
-          setServerSeedHash(response.data.serverSeedHash);
           setEncryptedCrashLane(response.data.encryptedCrashLane);
           // setEncryptedCrashLane(4);
           setNonce(response.data.nonce);
           setError("");
-
-          // If successful, and the game is not started, we return to the "start_default" state
-
-          setButtonState("start_default");
         }
       } catch (err: any) {
-        setError(
-          "Failed to create seed pair: " +
-            (err.response?.data?.error || err.message)
-        );
-        setButtonState("start_default");
-      } finally {
-        setIsCreating(false);
+        setButtonState("start_loading")
+        // setError(
+        //   "Failed to create seed pair: " +
+        //   (err.response?.data?.error || err.message)
+        // );
       }
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [betAmount, difficulty, publicKey, balance]);
@@ -183,6 +163,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     setCashOutLane(cashOutLane);
   };
   const handleStartGame = async () => {
+    // cashout 
     if (buttonState === "cashout_enabled") {
       const token = localStorage.getItem("authToken");
       if (encryptedCrashLane)
@@ -195,13 +176,14 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
       setGameActive(false);
       const response = await axios.post(
         `${API_URL}/api/seeds/retire`,
-        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+        { seedPairId, betAmount: parseFloat(betAmount), cashOutLane, difficulty },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      if (response) {
-        setTimeout(() => window.location.reload(), 2000);
-      }
+
+      setTimeout(() => { window.location.reload() }, refreshTime);
     } else {
+      //game start
+      setButtonState("cashout_disabled");
       if (!seedPairId) {
         setError("No seed pair available. Please adjust bet/difficulty first.");
         return;
@@ -217,7 +199,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
       }
       setGameActive(true);
       setError("");
-      setButtonState("cashout_disabled");
+
     }
   };
 
@@ -233,12 +215,12 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
       if (parseFloat(betAmount) > 0) {
         const response = await axios.post(
           `${API_URL}/api/seeds/retire`,
-          { seedPairId, betAmount: parseFloat(betAmount), cashOutLane },
+          { seedPairId, betAmount: parseFloat(betAmount), cashOutLane, difficulty },
           { headers: { Authorization: `Bearer ${token}` } }
         );
-        if (response) setTimeout(() => window.location.reload(), 3000);
+        setTimeout(() => window.location.reload(), refreshTime);
       } else {
-        setTimeout(() => window.location.reload(), 3000);
+        setTimeout(() => window.location.reload(), refreshTime);
       }
     } catch (err: any) {
       setError(
@@ -253,11 +235,18 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     const parts = cleanValue.split(".");
     const formatted =
       parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
+    const bet = parseFloat(formatted);
     setBetAmount(formatted);
-  };
-  const handleQuickBet = (multiplier: number) => {
-    const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(3));
+    if (bet < 0) {
+      setError("Please enter a valid bet amount.");
+      setButtonState("start_loading")
+      return;
+    }
+    if (balance !== null && bet > balance) {
+      setError("Insufficient balance.");
+      setButtonState("start_loading")
+      return;
+    }
   };
 
   const handleCrash = async (crashLane: number = 0) => {
@@ -271,7 +260,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
       { headers: { Authorization: `Bearer ${token}` } }
     );
     if (response) {
-      setTimeout(() => window.location.reload(), 3000);
+      setTimeout(() => window.location.reload(), refreshTime);
     }
   };
   // NEW: callback from GameUI => once lane #1 is clicked, switch to "cashout_enabled"
@@ -365,7 +354,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
 
       {/* Main content */}
       <div className=" ">
-        <div className=" max-w-[85rem] mx-auto min-h-[40rem] bg-[#191939] lg:p-5   ">
+        <div className=" min-h-[40rem] bg-[#191939] lg:p-5   ">
           {initialLoading ? (
             <div className="  w-full h-screen flex justify-center items-center ">
               <div className=" animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-purple-500"></div>
@@ -395,9 +384,10 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                 {/* MOBILE Start Button */}
                 <div className="lg:hidden  mt-2">
                   <div className="text-center mb-2">
-                    <span className="text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full">
-                      Betting 0 SOL enters demo mode
-                    </span>
+                    {!gameActive &&
+                      <span className="text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full">
+                        Betting 0 SOL enters demo mode
+                      </span>}
                   </div>
                   <button
                     onClick={handleStartGame}
@@ -431,7 +421,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                         placeholder="Enter bet amount (0 for demo)"
                         disabled={gameActive}
                       />
-                      <div className="absolute right-2 top-2 flex space-x-1">
+                      {/* <div className="absolute right-2 top-2 flex space-x-1">
                         <button
                           onClick={() => handleQuickBet(0.5)}
                           className="px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded"
@@ -450,7 +440,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                         >
                           Clear
                         </button>
-                      </div>
+                      </div> */}
                     </div>
                   </div>
 
@@ -465,11 +455,10 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                           <button
                             key={level}
                             onClick={() => setDifficulty(level)}
-                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${
-                              difficulty === level
-                                ? "bg-purple-500 text-white"
-                                : "bg-white/5 text-gray-400 hover:bg-white/10"
-                            }`}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium capitalize ${difficulty === level
+                              ? "bg-purple-500 text-white"
+                              : "bg-white/5 text-gray-400 hover:bg-white/10"
+                              }`}
                             disabled={gameActive}
                           >
                             {level}
@@ -480,12 +469,16 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                   </div>
 
                   {/* DESKTOP Start/CashOut Button */}
-                  <div className="hidden lg:flex flex-col justify-center">
-                    <div className="text-center mb-2">
-                      <span className="text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full">
+                  <div className="hidden lg:flex flex-col justify-center ">
+                    <div className="text-center mb-2" style={{ minHeight: "1.75rem" }}>
+                      <span
+                        className={`text-sm text-white bg-purple-500/20 px-3 py-1 rounded-full transition-opacity duration-300 ${!gameActive ? "opacity-100 visible" : "opacity-0 invisible"
+                          }`}
+                      >
                         Betting 0 SOL enters demo mode
                       </span>
                     </div>
+
                     <button
                       onClick={handleStartGame}
                       disabled={
@@ -496,12 +489,14 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                     >
                       {getButtonText(buttonState)}
                     </button>
+
                     <p className="text-center text-sm text-gray-400 mt-2">
                       {parseFloat(betAmount) === 0
                         ? "Demo Mode"
                         : `Playing on ${difficulty} mode`}
                     </p>
                   </div>
+
                 </div>
 
                 {error && (
