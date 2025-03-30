@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 import { Connection, LAMPORTS_PER_SOL } from "@solana/web3.js";
 import { useHandleDeposits } from "../utils/Deposits";
+import { stat } from "fs";
 
 interface ProfileProps {
   onPageChange: (page: "home" | "profile") => void;
@@ -257,7 +258,10 @@ export function Profile({
         setStats({
           totalWagered: data.user_stats.total_wag,
           totalBets: data.user_stats.total_bets,
-          averageWager: data.user_stats.total_wag / data.user_stats.total_bets,
+          averageWager:
+            data.user_stats.total_wag && data.user_stats.total_bets
+              ? data.user_stats.total_wag / data.user_stats.total_bets
+              : 0,
         });
       } catch (error) {
         console.error("Error fetching betting history:", error);
@@ -637,7 +641,9 @@ export function Profile({
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center space-x-2">
                 <Clock className="w-5 h-5 text-yellow-400" />
-                <h3 className="text-xl font-bold text-white">Transaction History</h3>
+                <h3 className="text-xl font-bold text-white">
+                  Transaction History
+                </h3>
               </div>
             </div>
 
@@ -647,11 +653,21 @@ export function Profile({
                   <table className="w-full lg:table-fixed border-separate border-spacing-0">
                     <thead className="sticky top-0 bg-[#1A2C38] z-10">
                       <tr className="text-left text-sm text-purple-200">
-                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Type</th>
-                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Status</th>
-                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">Amount</th>
-                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">Date</th>
-                        <th className="pb-4 font-medium lg:w-[30%] pl-8 pr-4 whitespace-nowrap">Transaction</th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">
+                          Type
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">
+                          Status
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[15%] px-4 whitespace-nowrap">
+                          Amount
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[20%] px-4 whitespace-nowrap">
+                          Date
+                        </th>
+                        <th className="pb-4 font-medium lg:w-[30%] pl-8 pr-4 whitespace-nowrap">
+                          Transaction
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-white/5">
@@ -660,13 +676,19 @@ export function Profile({
                           <td colSpan={5} className="py-4 px-4 text-center">
                             <div className="flex items-center justify-center space-x-2">
                               <div className="w-4 h-4 rounded-full border-2 border-yellow-500 border-t-transparent animate-spin" />
-                              <span className="text-gray-400">Loading transactions...</span>
+                              <span className="text-gray-400">
+                                Loading transactions...
+                              </span>
                             </div>
                           </td>
                         </tr>
-                      ) : !Array.isArray(transactions) || transactions.length === 0 ? (
+                      ) : !Array.isArray(transactions) ||
+                        transactions.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="py-20 px-4 text-center text-gray-400">
+                          <td
+                            colSpan={5}
+                            className="py-20 px-4 text-center text-gray-400"
+                          >
                             No transactions found
                           </td>
                         </tr>
@@ -715,12 +737,15 @@ export function Profile({
                                 className="text-purple-200 cursor-help"
                                 title={new Date(tx.created_at).toLocaleString()}
                               >
-                                {new Date(tx.created_at).toLocaleDateString(undefined, {
-                                  day: "numeric",
-                                  month: "short",
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
+                                {new Date(tx.created_at).toLocaleDateString(
+                                  undefined,
+                                  {
+                                    day: "numeric",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  }
+                                )}
                               </span>
                             </td>
                             <td className="py-4 pl-8 pr-4 whitespace-nowrap">
@@ -789,7 +814,10 @@ export function Profile({
                 <Calculator className="w-4 h-4 text-green-400" />
               </div>
               <div className="text-2xl font-bold text-white">
-                {stats.averageWager && stats.averageWager.toFixed(3)} SOL
+                {stats.averageWager > 0
+                  ? stats.averageWager.toFixed(3)
+                  : stats.averageWager}{" "}
+                SOL
               </div>
               <div className="text-sm text-gray-400 mt-1">Per bet average</div>
             </div>

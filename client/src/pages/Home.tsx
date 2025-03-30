@@ -299,7 +299,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                       ? `${balance.toFixed(3)} SOL`
                       : "Loading..."}
                   </span>
-                  <ChevronDown className="w-4 h-4 text-gray-400" />
                 </div>
               </div>
               <button
