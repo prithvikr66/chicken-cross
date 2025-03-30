@@ -35,8 +35,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     [key: string]: number[];
   } | null>(null);
   const [seedPairId, setSeedPairId] = useState("");
-  const [serverSeedHash, setServerSeedHash] = useState("");
-  const [clientSeed, setClientSeed] = useState("");
   const [multipliers, setMultipliers] = useState<number[]>([]);
   const [encryptedCrashLane, setEncryptedCrashLane] = useState<
     number | undefined
@@ -44,7 +42,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const [nonce, setNonce] = useState<string>("");
 
   const [gameActive, setGameActive] = useState(false);
-  const [keyPair, setKeyPair] = useState<nacl.BoxKeyPair | null>(null);
 
   // Betting
   const [betAmount, setBetAmount] = useState<string>("0");
@@ -57,8 +54,6 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   const [error, setError] = useState("");
   const [initialLoading, setInitialLoading] = useState(true);
 
-  // Track if /create is in-flight
-  const [isCreating, setIsCreating] = useState(false);
   const [cashOutLane, setCashOutLane] = useState<number>(0);
   const [ifCashOut, setIfCashOut] = useState({
     ifCashOut: false,
@@ -122,68 +117,44 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     }
   }, [difficulty, allMultipliers, gameActive]);
 
-  // 3) Debounced /seeds/create => idle mode
   useEffect(() => {
     if (!publicKey) return;
     const token = localStorage.getItem("authToken");
     if (!token) return;
 
-    const bet = parseFloat(betAmount);
-    //removed the isNan(bet) to allow empty field
-    if (bet < 0) {
-      setError("Please enter a valid bet amount.");
-      return;
-    }
-    if (balance !== null && bet > balance) {
-      setError("Insufficient balance.");
-      setButtonState("start_loading")
-      return;
-    }
-
     const timer = setTimeout(async () => {
       // We'll disable the button if we are loading
       try {
         if (!gameActive) {
-          setIsCreating(true);
-          // While we are in flight => buttonState => "start_loading"
           setButtonState("start_loading");
           const randomBytes = new Uint8Array(16);
           window.crypto.getRandomValues(randomBytes);
           const newClientSeed = `ChickenCross-${Array.from(randomBytes)
             .map((b) => b.toString(16).padStart(2, "0"))
             .join("")}-${Date.now()}`;
-          setClientSeed(newClientSeed);
-
-          const newKeyPair = nacl.box.keyPair();
-          setKeyPair(newKeyPair);
-
+          const bet = parseFloat(betAmount);
           const response = await axios.post(
             `${API_URL}/api/seeds/create`,
             { clientSeed: newClientSeed, difficulty, betAmount: bet, isGameActive: gameActive },
             { headers: { Authorization: `Bearer ${token}` } }
           );
-
+          if (response && response.status === 200) {
+            setButtonState("start_default")
+          }
           setSeedPairId(response.data.seedPairId);
-          setServerSeedHash(response.data.serverSeedHash);
           setEncryptedCrashLane(response.data.encryptedCrashLane);
           // setEncryptedCrashLane(4);
           setNonce(response.data.nonce);
           setError("");
-
-          // If successful, and the game is not started, we return to the "start_default" state
-
-          setButtonState("start_default");
         }
       } catch (err: any) {
-        setError(
-          "Failed to create seed pair: " +
-          (err.response?.data?.error || err.message)
-        );
-        setButtonState("start_default");
-      } finally {
-        setIsCreating(false);
+        setButtonState("start_loading")
+        // setError(
+        //   "Failed to create seed pair: " +
+        //   (err.response?.data?.error || err.message)
+        // );
       }
-    }, 300);
+    }, 500);
 
     return () => clearTimeout(timer);
   }, [betAmount, difficulty, publicKey, balance]);
@@ -264,11 +235,18 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     const parts = cleanValue.split(".");
     const formatted =
       parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 2) : "");
+    const bet = parseFloat(formatted);
     setBetAmount(formatted);
-  };
-  const handleQuickBet = (multiplier: number) => {
-    const currentValue = parseFloat(betAmount) || 0;
-    setBetAmount((currentValue * multiplier).toFixed(3));
+    if (bet < 0) {
+      setError("Please enter a valid bet amount.");
+      setButtonState("start_loading")
+      return;
+    }
+    if (balance !== null && bet > balance) {
+      setError("Insufficient balance.");
+      setButtonState("start_loading")
+      return;
+    }
   };
 
   const handleCrash = async (crashLane: number = 0) => {

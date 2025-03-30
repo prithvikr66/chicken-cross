@@ -9,28 +9,9 @@ const supabase = createClient(
 );
 
 const router = express.Router();
-const Xprecentage = 10;
+const maxPayoutPercent = 10; // e.g. 10% of house
 
-// const __filename = fileURLToPath(import.meta.url);
-// const __dirname = path.dirname(__filename);
 
-// const publicKeyPath = path.join(__dirname, "../", "public_key.pem");
-// const publicKey = fs.readFileSync(publicKeyPath, "utf8");
-
-// function encryptDataWithPublicKey(data) {
-//   const buffer = Buffer.from(data.toString(), "utf8");
-
-//   const encrypted = crypto.publicEncrypt(
-//     {
-//       key: publicKey,
-//       padding: crypto.constants.RSA_PKCS1_OAEP_PADDING, // ✅ Ensure correct padding
-//       oaepHash: "sha256", // ✅ Use SHA-256 for OAEP
-//     },
-//     buffer
-//   );
-
-//   return encrypted.toString("base64"); // ✅ Convert to Base64 for safe transmission
-// }
 
 function generateServerSeed() {
   return crypto.randomBytes(32).toString("hex");
@@ -40,17 +21,7 @@ function hashServerSeed(seed) {
   return crypto.createHash("sha256").update(seed).digest("hex");
 }
 
-function generateOutcome(serverSeed, clientSeed, nonce) {
-  const message = `${clientSeed}:${nonce}`;
-  const hmac = crypto
-    .createHmac("sha256", serverSeed)
-    .update(message)
-    .digest("hex");
-  const bytes = hmac.slice(0, 8);
-  const decimal = parseInt(bytes, 16);
-  const max = Math.pow(2, 32);
-  return decimal / max;
-}
+
 
 const getMultipliers = () => {
   const difficulties = ["easy", "medium", "hard", "daredevil"];
@@ -68,19 +39,19 @@ const getMultipliers = () => {
 }
 
 
+function generateOutcome(serverSeed, clientSeed, nonce) {
+  const message = `${clientSeed}:${nonce}`;
+  const hmac = crypto
+    .createHmac("sha256", serverSeed)
+    .update(message)
+    .digest("hex");
+  const bytes = hmac.slice(0, 8);
+  const decimal = parseInt(bytes, 16);
+  const max = Math.pow(2, 32);
+  return decimal / max;
+}
 
-export async function determineCrashLane(outcome, betAmount, difficulty) {
-  const { data, error } = await supabase
-    .from("house_balance")
-    .select("balance")
-    .single();
-
-  if (error || !data) {
-    throw new Error("Failed to fetch house balance");
-  }
-
-  const houseBalance = data.balance;
-  
+export async function determineCrashLane(outcome, betAmount, difficulty) {  
   const parsedBetAmount = parseFloat(betAmount) || 0;
   const isDemo = parsedBetAmount <= 0;
 
@@ -88,12 +59,10 @@ export async function determineCrashLane(outcome, betAmount, difficulty) {
   const difficultyData = multipliers[mode][difficulty].data;
 
   let cumulativeProbability = 0;
-  let selectedIndex = difficultyData.length - 1;
+  let selectedIndex = difficultyData.length - 1; // default last
 
-  // 1. Step: Probabilistically select crash lane index using the outcome
   for (let i = 0; i < difficultyData.length; i++) {
     cumulativeProbability += difficultyData[i].crashOccurenceRatio;
-
     if (outcome <= cumulativeProbability) {
       selectedIndex = i;
       break;
@@ -102,21 +71,29 @@ export async function determineCrashLane(outcome, betAmount, difficulty) {
 
   // 2. Step: If real mode, ensure payout <= X% of houseBalance
   if (!isDemo) {
-    const maxPayout = (Xprecentage / 100) * houseBalance;
-    const maxAllowedMultiplier = maxPayout / parsedBetAmount;
+    const { data, error } = await supabase
+      .from("house_balance")
+      .select("balance")
+      .single();
+
+    if (error || !data) {
+      throw new Error("Failed to fetch house balance");
+    }
+    const houseBalance = data.balance;
+
+    const maxPayout = (maxPayoutPercent / 100) * houseBalance;
 
     const selectedMultiplier = difficultyData[selectedIndex].multiplier;
+    const potentialPayout = selectedMultiplier * parsedBetAmount;
 
-    if (selectedMultiplier * parsedBetAmount > maxPayout) {
-      // Find the highest index where multiplier * betAmount is within allowed range
+    if (potentialPayout > maxPayout) {
+      // fallback to the biggest multiplier we can still pay out
       const fallbackIndex = difficultyData.findIndex(
         ({ multiplier }) => multiplier * parsedBetAmount <= maxPayout
       );
-
       selectedIndex = fallbackIndex !== -1 ? fallbackIndex : 0;
     }
   }
-
   return selectedIndex+1;
 }
 
