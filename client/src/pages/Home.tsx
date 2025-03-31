@@ -62,8 +62,12 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   });
   const setMultipliersMethod = (allMultipliers: any, difficulty: string) => {
     if (parseFloat(betAmount) > 0) {
+      console.log("called original");
+
       setMultipliers(allMultipliers["original"][difficulty])
     } else {
+      console.log("called demo");
+
       setMultipliers(allMultipliers["demo"][difficulty])
     }
   }
@@ -74,7 +78,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     "start_default" | "start_loading" | "cashout_disabled" | "cashout_enabled"
   >("start_default");
 
- 
+
 
   // 1) On mount (or wallet change), fetch user data & multipliers
   useEffect(() => {
@@ -117,7 +121,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     if (!gameActive && allMultipliers) {
       setMultipliersMethod(allMultipliers, difficulty)
     }
-  }, [difficulty, allMultipliers, gameActive]);
+  }, [difficulty, betAmount, allMultipliers, gameActive]);
 
   useEffect(() => {
     if (!publicKey) return;
@@ -423,6 +427,9 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
                         placeholder="Enter bet amount (0 for demo)"
                         disabled={gameActive}
                       />
+                      {error && (
+                        <p className="text-red-400  p-1 ">{error}</p>
+                      )}
                       {/* <div className="absolute right-2 top-2 flex space-x-1">
                         <button
                           onClick={() => handleQuickBet(0.5)}
@@ -501,9 +508,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
 
                 </div>
 
-                {error && (
-                  <p className="text-red-400 text-center mt-4">{error}</p>
-                )}
+
               </div>
               {/* Game History section */}
               <div className=" mt-[5%]">
