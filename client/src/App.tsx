@@ -10,7 +10,6 @@ import { Buffer } from "buffer";
 import { PublicKey } from "@solana/web3.js";
 function App() {
   const { connected, publicKey, signMessage, disconnect, wallet } = useWallet();
-
   const [loading, setLoading] = React.useState(false);
   const [signedIn, setSignedIn] = React.useState(false);
   const [currentPage, setCurrentPage] = React.useState<"home" | "profile">(
@@ -19,36 +18,27 @@ function App() {
   const [showDepositModal, setShowDepositModal] = React.useState(false);
 
   React.useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    if (token) setSignedIn(true);
-    1;
-  }, []);
+    if (!wallet || !wallet.adapter) return;
 
-  // Add wallet change listener
-  React.useEffect(() => {
-    if (wallet) {
-      const handleAccountChange = () => {
-        // Disconnect wallet
-        disconnect();
-        // Clear auth token
-        localStorage.removeItem("authToken");
-        // Reset signed in state
-        setSignedIn(false);
-        // Reload the page
-        window.location.reload();
-      };
+    // Listener for account changes
+    const handleAccountChange = () => {
+      disconnect();
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("walletName");
+      window.location.reload();
+    };
 
-      // Add listener for account changes
-      // @ts-ignore
-      wallet.adapter.on('accountChanged', handleAccountChange);
-
-      // Cleanup listener when component unmounts
-      return () => {
-        // @ts-ignore
-        wallet.adapter.off('accountChanged', handleAccountChange);
-      };
+    // Handle account changes (for Phantom and compatible wallets)
+    if (window.solana) {
+      window.solana.on("accountChanged", handleAccountChange);
     }
-  }, [wallet, disconnect]);
+
+    return () => {
+      if (window.solana) {
+        window.solana.removeListener("accountChanged", handleAccountChange);
+      }
+    };
+  }, [wallet, publicKey, disconnect]);
 
   const navigateToProfileWithModal = () => {
     setCurrentPage("profile");
@@ -99,8 +89,6 @@ function App() {
       setLoading(false);
     }
   };
-
- 
 
   return (
     <div className="min-h-screen bg-[#0F1923] text-white">
