@@ -62,8 +62,12 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
   });
   const setMultipliersMethod = (allMultipliers: any, difficulty: string) => {
     if (parseFloat(betAmount) > 0) {
+      console.log("called original");
+
       setMultipliers(allMultipliers["original"][difficulty])
     } else {
+      console.log("called demo");
+
       setMultipliers(allMultipliers["demo"][difficulty])
     }
   }
@@ -115,7 +119,7 @@ export function Home({ onPageChange, navigateToProfileWithModal }: HomeProps) {
     if (!gameActive && allMultipliers) {
       setMultipliersMethod(allMultipliers, difficulty)
     }
-  }, [difficulty, allMultipliers, gameActive]);
+  }, [difficulty, betAmount, allMultipliers, gameActive]);
 
   useEffect(() => {
     if (!publicKey) return;
