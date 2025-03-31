@@ -169,38 +169,31 @@ router.get("/dashboard-metrics", async (req, res) => {
       0
     );
 
-    // Step 3: Fetch total lost by players
-    const { data: totalLostData, error: lostError } = await supabase
+    // Step 3: Fetch all bets with payout and bet_amount for calculations
+    const { data: allBetsData, error: allBetsError } = await supabase
       .from("game_history")
-      .select("bet_amount, cash_out_lane, crash_lane");
+      .select("bet_amount, payout");
 
-    if (lostError) {
-      console.error("Error fetching total lost by players:", lostError);
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch total lost by players" });
+    if (allBetsError) {
+      console.error("Error fetching all bets data:", allBetsError);
+      return res.status(500).json({ error: "Failed to fetch all bets data" });
     }
 
-    const totalLost = totalLostData
-      .filter((bet) => bet.cash_out_lane >= bet.crash_lane) // Lost bets
-      .reduce((sum, bet) => sum + bet.bet_amount, 0);
+    const totalLost = allBetsData.reduce((sum, bet) => {
+      if (bet.payout < bet.bet_amount) {
+        return sum + (bet.bet_amount - (bet.payout || 0));
+      }
+      return sum;
+    }, 0);
 
-    // Step 4: Fetch total won by players
-    const { data: totalWonData, error: wonError } = await supabase
-      .from("game_history")
-      .select("payout, cash_out_lane, crash_lane");
-
-    if (wonError) {
-      console.error("Error fetching total won by players:", wonError);
-      return res
-        .status(500)
-        .json({ error: "Failed to fetch total won by players" });
-    }
-
-    const totalWon = totalWonData
-      .filter((bet) => bet.cash_out_lane < bet.crash_lane) // Won bets
-      .reduce((sum, bet) => sum + bet.payout, 0);
-
+    // Calculate total won by players (when payout > bet_amount)
+    const totalWon = allBetsData.reduce((sum, bet) => {
+      // If payout is greater than bet_amount, the difference is the win
+      if (bet.payout > bet.bet_amount) {
+        return sum + (bet.payout - bet.bet_amount);
+      }
+      return sum;
+    }, 0);
 
     const { data: totalWithdrawnData, error: withdrawnError } = await supabase
       .from("transactions")
@@ -252,9 +245,9 @@ router.get("/dashboard-metrics", async (req, res) => {
     );
 
     const { data, error } = await supabase
-    .from("house_balance")
-    .select("balance")
-    .single();
+      .from("house_balance")
+      .select("balance")
+      .single();
 
     // Step 8: Return the dashboard metrics
     res.status(200).json({
@@ -264,7 +257,7 @@ router.get("/dashboard-metrics", async (req, res) => {
         totalWagered,
         totalLost,
         totalWon,
-        houseBalance:data.balance,
+        houseBalance: data.balance,
         totalWithdrawn,
         pendingWithdrawals,
         pendingWithdrawalsCount,
@@ -307,48 +300,49 @@ router.put("/house-balance", async (req, res) => {
   }
 });
 
-router.get('/history', async (req, res) => {
+router.get("/history", async (req, res) => {
   try {
     // 1. Fetch both successful and rejected withdrawals
     const { data: transactions, error } = await supabase
-      .from('transactions')
-      .select('*')
-      .eq('transaction_type', 'withdrawal')
-      .in('status', ['successful', 'failed']) // Include both statuses
-      .order('updated_at', { ascending: false });
+      .from("transactions")
+      .select("*")
+      .eq("transaction_type", "withdrawal")
+      .in("status", ["successful", "failed"]) // Include both statuses
+      .order("updated_at", { ascending: false });
 
     if (error) throw error;
 
     // 2. Group transactions by status, admin, and timestamp
     const grouped = transactions.reduce((groups, tx) => {
       // Create separate groups for approved/rejected
-      const statusKey = tx.status === 'successful' ? 'approved' : 'failed';
-      const timeKey = Math.floor(new Date(tx.updated_at).getTime() / (5 * 60 * 1000));
+      const statusKey = tx.status === "successful" ? "approved" : "failed";
+      const timeKey = Math.floor(
+        new Date(tx.updated_at).getTime() / (5 * 60 * 1000)
+      );
       const groupKey = `${statusKey}-${tx.signed_by}-${timeKey}`;
-      
+
       if (!groups[groupKey]) {
         groups[groupKey] = {
           status: statusKey, // 'approved' or 'rejected'
           signed_by: tx.signed_by,
           signed_at: tx.updated_at,
-          transactions: []
+          transactions: [],
         };
       }
-      
+
       groups[groupKey].transactions.push(tx);
       return groups;
     }, {});
 
     // 3. Convert to array and sort
-    const result = Object.values(grouped).sort((a, b) => 
-      new Date(b.signed_at) - new Date(a.signed_at)
+    const result = Object.values(grouped).sort(
+      (a, b) => new Date(b.signed_at) - new Date(a.signed_at)
     );
 
     res.status(200).json({ groups: result });
-    
   } catch (err) {
-    console.error('Failed to fetch withdrawal history:', err);
-    res.status(500).json({ error: 'Internal server error' });
+    console.error("Failed to fetch withdrawal history:", err);
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
