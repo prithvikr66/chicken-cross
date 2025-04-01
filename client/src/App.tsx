@@ -18,10 +18,16 @@ function App() {
   const [showDepositModal, setShowDepositModal] = React.useState(false);
 
   React.useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token) setSignedIn(true);1
+  }, []);
+
+  React.useEffect(() => {
     if (!wallet || !wallet.adapter) return;
 
     // Listener for account changes
     const handleAccountChange = () => {
+      console.log("account changed")
       disconnect();
       localStorage.removeItem("authToken");
       localStorage.removeItem("walletName");
@@ -83,6 +89,7 @@ function App() {
         localStorage.setItem("authToken", token);
         setSignedIn(true);
       }
+
     } catch (error) {
       console.error("Error signing in:", error);
     } finally {
@@ -90,10 +97,11 @@ function App() {
     }
   };
 
+
   return (
     <div className="min-h-screen bg-[#0F1923] text-white">
       {/* {signedIn && <Header onPageChange={setCurrentPage} />} */}
-      {!signedIn || !publicKey ? (
+      {!signedIn ? (
         <div className="min-h-screen flex flex-col">
           <div className="bg-[#1A2C38]/95 backdrop-blur-lg border-b border-white/10 z-50">
             <div className="max-w-7xl mx-auto px-4 py-5 lg:py-3">

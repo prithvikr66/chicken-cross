@@ -209,7 +209,7 @@ router.post("/withdraw", async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const currentBalance = userData.account_balance;
+    const currentBalance = userData.account_balance.toFixed(3);
 
     // Step 3: Check if the user has enough balance to withdraw
     if (currentBalance < amount) {
