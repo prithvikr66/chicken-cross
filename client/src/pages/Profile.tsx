@@ -445,7 +445,8 @@ export function Profile({
     const formatted =
       parts[0] + (parts.length > 1 ? "." + parts[1].slice(0, 8) : "");
     const numValue = parseFloat(formatted);
-    if (!numValue || numValue <= profile.account_balance) {
+  //  @ts-ignore
+    if (numValue <= profile.account_balance.toFixed(3)) {
       setWithdrawAmount(formatted);
     }
   };
@@ -1223,7 +1224,7 @@ export function Profile({
                         type="button"
                         onClick={() =>
                           handleWithdrawChange(
-                            profile.account_balance.toFixed(3).toString()
+                            profile.account_balance.toFixed(3)
                           )
                         }
                         className="absolute right-2 top-2 px-2 py-1 text-xs bg-white/5 hover:bg-white/10 rounded text-gray-400 hover:text-white transition-colors"
