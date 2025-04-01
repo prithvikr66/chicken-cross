@@ -561,11 +561,7 @@ export function Profile({
                   className="w-24 h-24 rounded-xl object-cover mx-auto ring-4 ring-yellow-500/20"
                 />
               )}
-              <div className="absolute -bottom-3 left-1/2 transform -translate-x-1/2">
-                <div className="bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-medium text-xs px-3 py-1 rounded-full shadow-lg shadow-yellow-500/25">
-                  Level 42
-                </div>
-              </div>
+              
             </div>
 
             <div className="text-center space-y-2 pt-4">
